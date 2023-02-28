@@ -4,11 +4,30 @@
   "description": "A command line tool to create Full Stack templates",
   "main": "./create-fs-app",
   "bin": "./create-fs-app.js",
-  "keywords": ["full Stack","full","Stack","mern","mean","react","express","mongodb","mongo"],
+  "keywords": [
+    "full Stack",
+    "full",
+    "Stack",
+    "mern",
+    "mean",
+    "react",
+    "express",
+    "mongodb",
+    "mongo"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Om-jannu/create-fs-app.git"
   },
+  "type": "module",
   "author": "Om Jannu",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^5.2.0",
+    "chalk-animation": "^2.0.3",
+    "figlet": "^1.5.2",
+    "gradient-string": "^2.0.2",
+    "inquirer": "^9.1.4",
+    "nanospinner": "^1.1.0"
+  }
 }
