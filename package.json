@@ -1,0 +1,12 @@
+{
+  "name": "create-fs-app",
+  "version": "1.0.0",
+  "description": "A command line tool to create Full Stack templates",
+  "main": "./create-fs-app",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["full Stack","full","Stack","mern","mean","react","express","mongodb","mongo"],
+  "author": "Om Jannu",
+  "license": "ISC"
+}
