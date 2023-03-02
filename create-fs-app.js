@@ -13,7 +13,6 @@ import gradient from 'gradient-string';
 let appName = process.argv[2];
 const currentDirectory = process.cwd();
 const __filename = fileURLToPath(import.meta.url);
-
 // git repository 
 const mernGitRepo = "https://github.com/Om-jannu/mern-template.git";
 
@@ -72,7 +71,7 @@ const handleAnswer = async (fs_app) => {
   spinner.stop();
   if (fs_app == 'MERN app') {
     console.log(chalk.bold.bgGreen("\nBuilding MERN structure"));
-    BuildMernStructure();
+    BuildStructure(fs_app,mernGitRepo);
     await sleep();
     completion();
   }
@@ -86,45 +85,47 @@ const handleAnswer = async (fs_app) => {
   }
 }
 
-// function to clone a repositoy
-const buildStructure = async(dirName, dir, repo) => {
-  try {
-    child_process.execSync(`git clone ${repo} ${dirName}`, { stdio: 'inherit' });
-    console.log(chalk.bold.green('\nRepository cloned successfully to ' + dir));
-  } catch (err) {
-    console.error(chalk.italic.red('Error cloning repository:', err));
-    process.exit(1);
-  }
-}
+// function to clone mern repository
+const BuildStructure = async(selected_app,repoUrl) => {
 
-// function to create a folder 
-async function createFolder(folderName) {
-  try {
-    if (!fs.existsSync(folderName)) {
-      fs.mkdirSync(folderName);
-    } else {
-      console.log(chalk.italic.red(`Folder ${folderName} already exists.`));
-      console.log(chalk.bold.yellow(`Try : cd ${folderName} && npx create-fs-app .`));
+  // function to create a folder 
+  async function createFolder(folderName,selected_app) {
+    try {
+      if (!fs.existsSync(folderName)) {
+        fs.mkdirSync(folderName);
+        console.log(chalk.bold.green(`Creating a ${selected_app} in ~/${folderName}`));
+      } else {
+        console.log(chalk.italic.red(`Folder ${folderName} already exists.`));
+        console.log(chalk.bold.yellow(`Try : cd ${folderName} && npx create-fs-app .`));
+        process.exit(1);
+      }
+    } catch (err) {
+      console.error(chalk.italic.red(`error creting folder ${err}`));
+    }
+  }
+
+  // function to clone a repositoy
+  const cloneRepository = async(dirName, custdir, repo) => {
+    try {
+      child_process.execSync(`git clone ${repo} ${dirName}`, { stdio: 'inherit' });
+      console.log(chalk.bold.green('\nRepository cloned successfully to ' + custdir));
+    } catch (err) {
+      console.error(chalk.italic.red('Error cloning repository:', err));
       process.exit(1);
     }
-  } catch (err) {
-    console.error(chalk.italic.red(`error creting folder ${err}`));
   }
-}
 
-// function to clone mern repository
-const BuildMernStructure = async() => {
   if (!appName) {
     console.error(chalk.italic.red('Error: Please provide a directory name'));
     process.exit(1);
   }
   else if (appName == ".") {
-    buildStructure('.', currentDirectory, mernGitRepo);
+    cloneRepository('.', currentDirectory, repoUrl);
   }
   else {
     const projDir = path.resolve(path.dirname(__filename),appName);
-    await createFolder(appName);
-    await buildStructure(appName,projDir,mernGitRepo);
+    await createFolder(appName,selected_app);
+    await cloneRepository(appName,projDir,repoUrl);
   }
 }
 
@@ -137,8 +138,3 @@ if (process.argv.length > 3) {
 await installMyPackage();
 await welcome();
 await askFsName();
-
-
-
-
-
