@@ -2,7 +2,7 @@
 import fs from 'fs';
 import child_process from "child_process";
 import path from 'path';
-import {fileURLToPath} from 'url';
+import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import chalkAnimation from 'chalk-animation';
 import inquirer from 'inquirer';
@@ -13,17 +13,19 @@ import gradient from 'gradient-string';
 let appName = process.argv[2];
 const currentDirectory = process.cwd();
 const __filename = fileURLToPath(import.meta.url);
-const parentDir = path.resolve(path.dirname(__filename),'../');
-console.log(parentDir);
+
+// git repository 
 const mernGitRepo = "https://github.com/Om-jannu/mern-template.git";
 
 //sleep function
 const sleep = (ms = 1000) => new Promise((r) => setTimeout(r, ms));
-
+const installMyPackage = async() =>{
+  child_process.execSync('npm i create-fs-app -g');
+}
 // welcome function
-const welcome = async() =>{
+const welcome = async () => {
   const msg = "create-fs-app";
-  const welcomeMsg = figlet(msg,(err,data) =>{
+  const welcomeMsg = figlet(msg, (err, data) => {
     console.log(gradient.pastel.multiline(data));
   })
   welcomeMsg;
@@ -36,12 +38,12 @@ const welcome = async() =>{
 }
 
 // qns function
-const askFsName = async() => {
+const askFsName = async () => {
   const answers = await inquirer.prompt({
-    name:"fs_app",
-    type:'list',
-    message:'Which FullStack App do you want to build?',
-    choices:[
+    name: "fs_app",
+    type: 'list',
+    message: 'Which FullStack App do you want to build?',
+    choices: [
       'MERN app',
       'MEAN app',
       'MEVN app',
@@ -51,88 +53,88 @@ const askFsName = async() => {
 }
 
 //completion screen
-const completion = async() =>{
+const completion = async () => {
   const completion_msg = chalkAnimation.rainbow(
     '\nSuccesfully created your Full Stack Template'
   );
   await sleep();
   completion_msg.stop();
   console.log(chalk.bold.yellow('To access your folder :'));
-  console.log(chalk.bold.blue('cd ..'));
-  console.log(chalk.bold.blue(`cd ${appName}`));
+  console.log(chalk.bold.blue(`cd ${(appName=='.')?currentDirectory:appName}`));
   console.log(chalk.bold.blue('code .'));
-      const projectdirname = parentDir+'/'+appName;
-      console.log(chalk.bold.yellow(`\nNOTE : ${chalk.bold.blue('code .')} is for opening folder in vs-code for different IDE use different Keyword`));
+  console.log(chalk.bold.yellow(`\nNOTE : ${chalk.bold.blue('code .')} is for opening folder in ${chalk.bold.blue('vs-code')} for different IDE use different Keyword`));
 }
 
 // answer handler
-const handleAnswer = async(fs_app) => {
+const handleAnswer = async (fs_app) => {
   const spinner = createSpinner(chalk.bold.green('Creating your Project Structure...')).start();
   await sleep();
   spinner.stop();
-  if(fs_app == 'MERN app') {
+  if (fs_app == 'MERN app') {
     console.log(chalk.bold.bgGreen("\nBuilding MERN structure"));
     BuildMernStructure();
     await sleep();
     completion();
   }
-  if(fs_app == 'MEAN app') {
+  if (fs_app == 'MEAN app') {
     console.log("\nNot yet started");
     // completion();
   }
-  if(fs_app == 'MEVN app') {
+  if (fs_app == 'MEVN app') {
     console.log("\nNot yet started");
     // completion();
   }
 }
 
 // function to clone a repositoy
-const buildStructure = (dirName,dir,repo) => {
+const buildStructure = async(dirName, dir, repo) => {
   try {
-    child_process.execSync(`git clone ${repo} ${dirName}`,{stdio:'inherit'});
-    console.log(chalk.bold.green('\nRepository cloned successfully to '+dir));
+    child_process.execSync(`git clone ${repo} ${dirName}`, { stdio: 'inherit' });
+    console.log(chalk.bold.green('\nRepository cloned successfully to ' + dir));
   } catch (err) {
-    console.error(chalk.bold.red('Error cloning repository:', err));
+    console.error(chalk.italic.red('Error cloning repository:', err));
     process.exit(1);
+  }
+}
+
+// function to create a folder 
+async function createFolder(folderName) {
+  try {
+    if (!fs.existsSync(folderName)) {
+      fs.mkdirSync(folderName);
+    } else {
+      console.log(chalk.italic.red(`Folder ${folderName} already exists.`));
+      console.log(chalk.bold.yellow(`Try : cd ${folderName} && npx create-fs-app .`));
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error(chalk.italic.red(`error creting folder ${err}`));
   }
 }
 
 // function to clone mern repository
-const BuildMernStructure = ()=>{
+const BuildMernStructure = async() => {
   if (!appName) {
-    console.error(chalk.bold.red('Error: Please provide a directory name'));
+    console.error(chalk.italic.red('Error: Please provide a directory name'));
     process.exit(1);
   }
   else if (appName == ".") {
-    buildStructure(".",currentDirectory,mernGitRepo);
+    buildStructure('.', currentDirectory, mernGitRepo);
   }
   else {
-    fs.access(parentDir, fs.constants.F_OK, (error) => {
-      if (error) {
-        console.error(chalk.bold.red(`Error: Directory "${parentDir}" does not exist`));
-        process.exit(1);
-      }
-      process.chdir(parentDir);
-      console.log(chalk.bold.yellow(`Current directory : ${process.cwd()}`));
-      if (fs.existsSync(path.join(parentDir, appName))) {
-        console.log(chalk.bold.red("Folder already exists"));
-        process.exit(0);
-      }
-      fs.mkdirSync(appName);
-      const projectdirname = parentDir+'\\'+appName;
-      buildStructure(appName,projectdirname,mernGitRepo);
-      console.log(chalk.bold.green(`Project "${appName}" has been created`));
-    });
+    const projDir = path.resolve(path.dirname(__filename),appName);
+    await createFolder(appName);
+    await buildStructure(appName,projDir,mernGitRepo);
   }
 }
 
 if (process.argv.length > 3) {
-  console.log(chalk.bold.red("Error: Please provide a valid directory name"));
-  console.log(chalk.bold.red("Note: directory name should not contain spaces"));
+  console.log(chalk.italic.red("Error: Please provide a valid directory name"));
+  console.log(chalk.italic.red("Note: directory name should not contain spaces"));
   console.log(chalk.bold.yellow("Try : npx build-mern-app app_name"));
   process.exit(1);
 }
-
+await installMyPackage();
 await welcome();
 await askFsName();
 
