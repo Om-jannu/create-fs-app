@@ -1,6 +1,6 @@
 {
   "name": "create-fs-app",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "A command line tool to create Full Stack templates",
   "main": "./create-fs-app",
   "bin": "./create-fs-app.js",
