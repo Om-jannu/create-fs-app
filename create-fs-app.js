@@ -123,9 +123,8 @@ const BuildStructure = async(selected_app,repoUrl) => {
     cloneRepository('.', currentDirectory, repoUrl);
   }
   else {
-    const projDir = path.resolve(path.dirname(__filename),appName);
     await createFolder(appName,selected_app);
-    await cloneRepository(appName,projDir,repoUrl);
+    await cloneRepository(appName,currentDirectory,repoUrl);
   }
 }
 
