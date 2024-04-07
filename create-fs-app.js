@@ -1,7 +1,6 @@
 import fs from 'fs';
 import child_process from 'child_process';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import chalkAnimation from 'chalk-animation';
 import inquirer from 'inquirer';
@@ -170,7 +169,7 @@ const run = async () => {
       process.exit(1);
     }
 
-    await installMyPackage();
+    // await installMyPackage();
     await welcome();
     await askFsName();
   } catch (error) {
