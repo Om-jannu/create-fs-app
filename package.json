@@ -1,35 +1,58 @@
 {
   "name": "create-fs-app",
-  "version": "1.1.10",
-  "description": "A command line tool to create Full Stack templates",
-  "main": "./create-fs-app",
-  "bin": "./create-fs-app.js",
-  "keywords": [
-    "full Stack",
-    "full",
-    "Stack",
-    "mern",
-    "mean",
-    "react",
-    "express",
-    "mongodb",
-    "mongo"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Om-jannu/create-fs-app.git"
-  },
+  "version": "2.0.0",
+  "description": "A CLI tool to create customizable full-stack monorepo applications",
+  "main": "./dist/index.js",
+  "bin": "./dist/index.js",
   "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "lint": "eslint . --ext .ts",
+    "test": "jest",
+    "postbuild": "chmod +x dist/index.js"
+  },
+  "keywords": [
+    "full-stack",
+    "monorepo",
+    "turborepo",
+    "nx",
+    "react",
+    "next.js",
+    "express",
+    "nest.js",
+    "typescript"
+  ],
   "author": "Om Jannu",
   "license": "ISC",
   "dependencies": {
-    "chalk": "^5.2.0",
-    "chalk-animation": "^2.0.3",
-    "figlet": "^1.5.2",
-    "gradient-string": "^2.0.2",
-    "inquirer": "^9.1.4",
-    "nanospinner": "^1.1.0",
-    "ora": "^8.0.1",
-    "prompts": "^2.4.2"
+    "boxen": "^8.0.1",
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.1",
+    "execa": "^9.6.0",
+    "figlet": "^1.9.3",
+    "gradient-string": "^3.0.0",
+    "inquirer": "^12.10.0",
+    "ora": "^9.0.0",
+    "update-notifier": "^7.3.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/figlet": "^1.7.0",
+    "@types/gradient-string": "^1.1.6",
+    "@types/inquirer": "^9.0.9",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.8.1",
+    "@types/update-notifier": "^6.0.8",
+    "@typescript-eslint/eslint-plugin": "^8.46.1",
+    "@typescript-eslint/parser": "^8.46.1",
+    "eslint": "^9.38.0",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
