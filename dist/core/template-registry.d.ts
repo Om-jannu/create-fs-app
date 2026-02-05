@@ -10,6 +10,7 @@ import { ProjectConfig } from '../types/index.js';
 export interface TemplateMetadata {
     url: string;
     branch?: string;
+    subfolder?: string;
     description: string;
     features: string[];
 }
@@ -30,6 +31,10 @@ export declare function getTemplateKey(config: ProjectConfig): string;
  * Get template metadata for a configuration
  */
 export declare function getTemplate(config: ProjectConfig): TemplateMetadata | null;
+/**
+ * Create template metadata from custom URL
+ */
+export declare function createCustomTemplate(url: string, branch?: string, subfolder?: string): TemplateMetadata;
 /**
  * List all available templates
  */

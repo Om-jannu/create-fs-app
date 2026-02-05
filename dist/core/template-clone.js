@@ -5,25 +5,87 @@
 import { execa } from 'execa';
 import fs from 'fs/promises';
 import path from 'path';
+import { randomUUID } from 'crypto';
+import { Logger } from '../utils/logger.js';
+import { getCachedTemplatePath, cacheTemplate, copyCachedTemplate } from './template-cache.js';
 /**
- * Clone a template repository
+ * Clone a template repository (with caching support)
  */
 export async function cloneTemplate(template, targetDir, branch = 'main') {
-    const { url } = template;
+    const { url, subfolder } = template;
     try {
-        // Clone with shallow depth for speed
-        await execa('git', [
-            'clone',
-            '--depth',
-            '1',
-            '--branch',
-            branch,
-            url,
-            targetDir
-        ]);
-        // Remove .git directory to start fresh
-        const gitDir = path.join(targetDir, '.git');
-        await fs.rm(gitDir, { recursive: true, force: true });
+        // Check if template is cached
+        const cachedPath = await getCachedTemplatePath(template);
+        if (cachedPath) {
+            Logger.verbose('Using cached template');
+            await copyCachedTemplate(cachedPath, targetDir);
+            return;
+        }
+        Logger.verbose('Template not cached, downloading...');
+        if (subfolder) {
+            // Clone entire repo to temp directory, then copy specific subfolder
+            // Use UUID to prevent race conditions with simultaneous runs
+            const tempDir = path.join(process.cwd(), `.temp-${randomUUID()}`);
+            try {
+                // Clone with shallow depth for speed
+                await execa('git', [
+                    'clone',
+                    '--depth',
+                    '1',
+                    '--branch',
+                    branch,
+                    '--single-branch',
+                    url,
+                    tempDir
+                ]);
+                // Copy the specific subfolder to target directory
+                const templatePath = path.join(tempDir, subfolder);
+                // Check if the subfolder exists
+                try {
+                    await fs.access(templatePath);
+                }
+                catch {
+                    throw new Error(`Template subfolder "${subfolder}" not found in repository`);
+                }
+                // Copy the template folder contents to target
+                await fs.cp(templatePath, targetDir, { recursive: true });
+                // Cache the template for future use
+                Logger.verbose('Caching template for future use...');
+                await cacheTemplate(template, branch).catch(err => {
+                    Logger.warn('Failed to cache template, continuing anyway');
+                });
+                // Clean up temp directory
+                await fs.rm(tempDir, { recursive: true, force: true });
+            }
+            catch (error) {
+                // Clean up temp directory on error
+                try {
+                    await fs.rm(tempDir, { recursive: true, force: true });
+                }
+                catch { }
+                throw error;
+            }
+        }
+        else {
+            // Direct clone (for individual template repositories)
+            await execa('git', [
+                'clone',
+                '--depth',
+                '1',
+                '--branch',
+                branch,
+                url,
+                targetDir
+            ]);
+            // Remove .git directory to start fresh
+            const gitDir = path.join(targetDir, '.git');
+            await fs.rm(gitDir, { recursive: true, force: true });
+            // Cache the template
+            Logger.verbose('Caching template for future use...');
+            await cacheTemplate(template, branch).catch(err => {
+                Logger.warn('Failed to cache template, continuing anyway');
+            });
+        }
     }
     catch (error) {
         throw new Error(`Failed to clone template: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -92,24 +154,20 @@ async function replacePlaceholders(targetDir, config) {
         '{{PACKAGE_MANAGER}}': config.packageManager,
         '{{MONOREPO_FRAMEWORK}}': config.monorepo,
     };
-    // Files to search and replace in
-    const patterns = [
-        '**/*.md',
-        '**/*.json',
-        '**/*.ts',
-        '**/*.tsx',
-        '**/*.js',
-        '**/*.jsx',
-        '**/Dockerfile',
-        '**/.env.example',
-    ];
+    // Only process text files with these extensions for performance
+    const TEXT_EXTENSIONS = ['.md', '.json', '.ts', '.tsx', '.js', '.jsx', '.env', '.example', '.yml', '.yaml'];
     async function processFile(filePath) {
         try {
+            // Skip non-text files for performance
+            const hasTextExtension = TEXT_EXTENSIONS.some(ext => filePath.endsWith(ext));
+            if (!hasTextExtension)
+                return;
             let content = await fs.readFile(filePath, 'utf-8');
             let modified = false;
+            // Use simple string replacement instead of regex to avoid issues with special characters
             for (const [placeholder, value] of Object.entries(placeholders)) {
                 if (content.includes(placeholder)) {
-                    content = content.replace(new RegExp(placeholder, 'g'), value);
+                    content = content.split(placeholder).join(value);
                     modified = true;
                 }
             }

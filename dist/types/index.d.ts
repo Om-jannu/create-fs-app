@@ -30,12 +30,25 @@ export declare enum PackageManager {
 }
 export declare const ProjectConfigSchema: z.ZodObject<{
     name: z.ZodString;
-    monorepo: z.ZodEnum<typeof MonorepoFramework>;
-    packageManager: z.ZodEnum<typeof PackageManager>;
+    monorepo: z.ZodEnum<{
+        turborepo: "turborepo";
+        nx: "nx";
+        lerna: "lerna";
+    }>;
+    packageManager: z.ZodEnum<{
+        npm: "npm";
+        yarn: "yarn";
+        pnpm: "pnpm";
+    }>;
     apps: z.ZodObject<{
         frontend: z.ZodObject<{
-            framework: z.ZodEnum<typeof FrontendFramework>;
-            typescript: z.ZodBoolean;
+            framework: z.ZodEnum<{
+                react: "react";
+                "next.js": "next.js";
+                vue: "vue";
+                nuxt: "nuxt";
+                angular: "angular";
+            }>;
             styling: z.ZodEnum<{
                 css: "css";
                 scss: "scss";
@@ -50,8 +63,18 @@ export declare const ProjectConfigSchema: z.ZodObject<{
             linting: z.ZodBoolean;
         }, z.core.$strip>;
         backend: z.ZodObject<{
-            framework: z.ZodEnum<typeof BackendFramework>;
-            database: z.ZodEnum<typeof Database>;
+            framework: z.ZodEnum<{
+                express: "express";
+                "nest.js": "nest.js";
+                "fastify-ts": "fastify-ts";
+                koa: "koa";
+            }>;
+            database: z.ZodEnum<{
+                mongodb: "mongodb";
+                postgresql: "postgresql";
+                mysql: "mysql";
+                sqlite: "sqlite";
+            }>;
             orm: z.ZodOptional<z.ZodEnum<{
                 prisma: "prisma";
                 typeorm: "typeorm";

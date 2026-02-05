@@ -10,7 +10,7 @@ export interface CloneOptions {
     depth?: number;
 }
 /**
- * Clone a template repository
+ * Clone a template repository (with caching support)
  */
 export declare function cloneTemplate(template: TemplateMetadata, targetDir: string, branch?: string): Promise<void>;
 /**

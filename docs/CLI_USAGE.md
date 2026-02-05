@@ -58,8 +58,6 @@ When using CLI options mode, these are **required**:
 | `--orm <name>` | ORM/ODM | (none) |
 | `--package-manager <pm>` | Package manager | `npm` |
 | `--styling <solution>` | Styling solution | `tailwind` |
-| `--typescript` | Enable TypeScript | `true` |
-| `--no-typescript` | Disable TypeScript | - |
 | `--linting` | Enable linting | `true` |
 | `--no-linting` | Disable linting | - |
 | `--docker` | Include Docker | `true` |
@@ -237,7 +235,7 @@ npx create-fs-app my-blog \
 This will use:
 - npm as package manager
 - Tailwind for styling
-- TypeScript enabled
+- TypeScript (always enabled - all projects use TypeScript)
 - Linting enabled
 - Docker included
 

@@ -38,7 +38,7 @@ A blazingly fast CLI tool for creating production-ready full-stack monorepo appl
 - npm, yarn, pnpm
 
 ### 🔧 **Included Out of the Box**
-- ✅ TypeScript configured
+- ✅ **TypeScript only** - All projects use TypeScript (no JavaScript)
 - ✅ Styling solutions (Tailwind, CSS Modules, Styled Components)
 - ✅ Testing frameworks (Jest, Vitest)
 - ✅ Docker & Docker Compose
@@ -123,9 +123,10 @@ Stack Options:
   --orm <orm>                ORM (prisma, typeorm, mongoose, drizzle)
   --package-manager <pm>     Package manager (npm, yarn, pnpm)
   --styling <solution>       Styling (css, scss, tailwind, styled-components)
-  --[no-]typescript         Use TypeScript (default: true)
   --[no-]linting            Enable linting (default: true)
   --[no-]docker             Include Docker (default: true)
+  
+Note: All projects use TypeScript by default (no JavaScript option)
 
 Template Options:
   -t, --template <name>      Use a specific template directly
@@ -196,6 +197,95 @@ npx create-fs-app $PROJECT_NAME \
 ```
 
 **See [docs/CLI_USAGE.md](./docs/CLI_USAGE.md) for more examples and advanced usage.**
+
+## 🛠️ Local Development
+
+To run the CLI locally for testing and development:
+
+### Method 1: Using npm link (Recommended)
+
+This creates a global symlink so you can use `create-fs-app` anywhere:
+
+```bash
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Create a global symlink
+npm link
+
+# Now you can use it anywhere!
+create-fs-app my-app
+# or
+create-fs-app my-app --template turborepo-nextjs-nestjs-postgresql-prisma
+```
+
+To unlink later:
+```bash
+npm unlink -g create-fs-app
+```
+
+### Method 2: Direct Node Execution
+
+Run the compiled CLI directly:
+
+```bash
+# Build the project
+npm run build
+
+# Run directly with node
+node dist/index.js my-app
+
+# Or with options
+node dist/index.js my-app --template turborepo-nextjs-nestjs-postgresql-prisma
+
+# List templates
+node dist/index.js list
+```
+
+### Method 3: Watch Mode for Development
+
+For active development with auto-rebuild:
+
+```bash
+# Terminal 1: Watch for changes and rebuild
+npm run dev
+
+# Terminal 2: Run the CLI (rebuilds automatically)
+node dist/index.js my-app
+```
+
+### Method 4: Using npx with local path
+
+```bash
+# Build first
+npm run build
+
+# Run with npx pointing to local dist
+npx ./dist/index.js my-app
+```
+
+### Testing Your Changes
+
+1. Make changes to source files in `src/`
+2. Run `npm run build` (or `npm run dev` for watch mode)
+3. Test with one of the methods above
+4. Test different scenarios:
+   ```bash
+   # Interactive mode
+   create-fs-app test-app
+   
+   # CLI options mode
+   create-fs-app test-app --monorepo turborepo --frontend next.js
+   
+   # Template mode
+   create-fs-app test-app --template turborepo-nextjs-nestjs-postgresql-prisma
+   
+   # List templates
+   create-fs-app list
+   ```
 
 ## Requirements
 

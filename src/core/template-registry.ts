@@ -12,13 +12,15 @@ import { ProjectConfig, MonorepoFramework, FrontendFramework, BackendFramework, 
 export interface TemplateMetadata {
   url: string;
   branch?: string;
+  subfolder?: string; // Path to template within the repo (e.g., 'templates/turborepo-nextjs-nestjs-postgresql-prisma')
   description: string;
   features: string[];
 }
 
-// Base URL for your template repositories
-// You can host all templates in one monorepo or separate repos
-const TEMPLATE_BASE_URL = 'https://github.com/create-fs-app-templates';
+// Single monorepo containing all templates
+const TEMPLATE_REPO_URL = 'https://github.com/Om-jannu/create-fs-app-templates';
+const TEMPLATE_BRANCH = 'main';
+const TEMPLATES_FOLDER = 'templates';
 
 /**
  * Template registry - maps configuration to template URLs
@@ -29,55 +31,26 @@ const TEMPLATE_BASE_URL = 'https://github.com/create-fs-app-templates';
  * 3. Templates include placeholder variables for customization
  */
 export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
-  // Turborepo Templates
+  // All templates are in a single repository under the 'templates' folder
+  // Repository structure: create-fs-app-templates/templates/{template-name}/
+  
   'turborepo-nextjs-nestjs-postgresql-prisma': {
-    url: `${TEMPLATE_BASE_URL}/template-turborepo-nextjs-nestjs-postgresql-prisma`,
-    branch: 'main',
+    url: TEMPLATE_REPO_URL,
+    branch: TEMPLATE_BRANCH,
+    subfolder: `${TEMPLATES_FOLDER}/turborepo-nextjs-nestjs-postgresql-prisma`,
     description: 'Turborepo with Next.js, NestJS, PostgreSQL, and Prisma',
     features: ['TypeScript', 'Tailwind CSS', 'Docker', 'ESLint', 'Prettier']
   },
   'turborepo-react-express-mongodb-mongoose': {
-    url: `${TEMPLATE_BASE_URL}/template-turborepo-react-express-mongodb-mongoose`,
-    branch: 'main',
+    url: TEMPLATE_REPO_URL,
+    branch: TEMPLATE_BRANCH,
+    subfolder: `${TEMPLATES_FOLDER}/turborepo-react-express-mongodb-mongoose`,
     description: 'Turborepo with React (Vite), Express, MongoDB, and Mongoose',
     features: ['TypeScript', 'Tailwind CSS', 'Docker', 'Testing']
   },
-  'turborepo-nextjs-express-mysql-prisma': {
-    url: `${TEMPLATE_BASE_URL}/template-turborepo-nextjs-express-mysql-prisma`,
-    branch: 'main',
-    description: 'Turborepo with Next.js, Express, MySQL, and Prisma',
-    features: ['TypeScript', 'Styled Components', 'Docker']
-  },
-  'turborepo-vue-nestjs-postgresql-typeorm': {
-    url: `${TEMPLATE_BASE_URL}/template-turborepo-vue-nestjs-postgresql-typeorm`,
-    branch: 'main',
-    description: 'Turborepo with Vue, NestJS, PostgreSQL, and TypeORM',
-    features: ['TypeScript', 'Tailwind CSS', 'Docker']
-  },
-
-  // Nx Templates
-  'nx-nextjs-nestjs-postgresql-prisma': {
-    url: `${TEMPLATE_BASE_URL}/template-nx-nextjs-nestjs-postgresql-prisma`,
-    branch: 'main',
-    description: 'Nx workspace with Next.js, NestJS, PostgreSQL, and Prisma',
-    features: ['TypeScript', 'Tailwind CSS', 'Testing', 'Storybook']
-  },
-  'nx-react-express-mongodb-mongoose': {
-    url: `${TEMPLATE_BASE_URL}/template-nx-react-express-mongodb-mongoose`,
-    branch: 'main',
-    description: 'Nx workspace with React, Express, MongoDB, and Mongoose',
-    features: ['TypeScript', 'CSS Modules', 'Testing']
-  },
-
-  // Lerna Templates
-  'lerna-react-express-postgresql-prisma': {
-    url: `${TEMPLATE_BASE_URL}/template-lerna-react-express-postgresql-prisma`,
-    branch: 'main',
-    description: 'Lerna monorepo with React, Express, PostgreSQL, and Prisma',
-    features: ['TypeScript', 'Tailwind CSS', 'Docker']
-  },
-
-  // Add more template combinations as you create them
+  
+  // Add more templates as you create them
+  // All in the same repository under templates/ folder
 };
 
 /**
@@ -118,6 +91,23 @@ export function getTemplate(config: ProjectConfig): TemplateMetadata | null {
   );
 
   return closestMatch ? TEMPLATE_REGISTRY[closestMatch] : null;
+}
+
+/**
+ * Create template metadata from custom URL
+ */
+export function createCustomTemplate(
+  url: string,
+  branch: string = 'main',
+  subfolder?: string
+): TemplateMetadata {
+  return {
+    url,
+    branch,
+    subfolder,
+    description: 'Custom template from URL',
+    features: ['Custom']
+  };
 }
 
 /**

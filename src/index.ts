@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import inquirer from 'inquirer';
+import prompts from 'prompts';
 import chalk from 'chalk';
 import gradient from 'gradient-string';
 import figlet from 'figlet';
@@ -21,6 +21,22 @@ import {
 } from './types/index.js';
 import { scaffoldProject, validateProjectDirectory, checkTemplateAvailability, TemplateNotFoundError } from './core/scaffold.js';
 import { displayAvailableTemplates, getTemplateByName } from './core/template-list.js';
+import { assertValidProjectName } from './utils/validation.js';
+import { Logger } from './utils/logger.js';
+import { formatError } from './utils/errors.js';
+import { 
+  savePreset, 
+  loadPreset, 
+  listPresets, 
+  deletePreset, 
+  getPresetConfig,
+  getBuiltinPreset,
+  BUILTIN_PRESETS 
+} from './core/presets.js';
+import { runHealthCheck, displayHealthCheckResults } from './core/health-check.js';
+import { clearCache, getCacheStats } from './core/template-cache.js';
+import { createCustomTemplate } from './core/template-registry.js';
+import { validateTemplateUrl } from './utils/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -48,7 +64,7 @@ async function welcome() {
   const welcomeMsg = boxen(
     chalk.white.bold('Create production-ready full-stack applications\n') +
     chalk.gray('Template-based • Fast • Customizable\n\n') +
-    chalk.cyan('✓ TypeScript by default\n') +
+    chalk.cyan('✓ TypeScript only (no JavaScript projects)\n') +
     chalk.cyan('✓ Multiple monorepo frameworks\n') +
     chalk.cyan('✓ Customizable frontend & backend\n') +
     chalk.cyan('✓ Database & ORM selection\n') +
@@ -73,13 +89,16 @@ async function welcome() {
 function buildConfigFromOptions(name: string | undefined, options: any): ProjectConfig {
   // Validate required fields
   if (!name) {
-    console.log(chalk.red('\n❌ Project name is required.\n'));
+    Logger.error('Project name is required.');
     console.log(chalk.cyan('Usage: create-fs-app <project-name> [options]\n'));
     process.exit(1);
   }
 
+  // Validate project name
+  assertValidProjectName(name);
+
   if (!options.monorepo || !options.frontend || !options.backend || !options.database) {
-    console.log(chalk.red('\n❌ When using CLI options, you must provide:\n'));
+    Logger.error('When using CLI options, you must provide:');
     console.log(chalk.yellow('  --monorepo <framework>'));
     console.log(chalk.yellow('  --frontend <framework>'));
     console.log(chalk.yellow('  --backend <framework>'));
@@ -110,7 +129,7 @@ function buildConfigFromOptions(name: string | undefined, options: any): Project
     apps: {
       frontend: {
         framework: validateEnum(options.frontend, FrontendFramework, 'frontend framework'),
-        typescript: options.typescript !== false, // default true
+        // TypeScript is always enabled
         styling: options.styling || 'tailwind',
         linting: options.linting !== false // default true
       },
@@ -127,87 +146,116 @@ function buildConfigFromOptions(name: string | undefined, options: any): Project
   try {
     return ProjectConfigSchema.parse(config);
   } catch (error) {
-    console.log(chalk.red('\n❌ Invalid configuration:\n'));
+    Logger.error('Invalid configuration:');
     console.error(error);
     process.exit(1);
   }
 }
 
 async function promptForConfiguration(projectName?: string): Promise<ProjectConfig> {
-  const answers = await inquirer.prompt([
-    {
-      type: 'input',
+  const questions: prompts.PromptObject[] = [];
+  
+  if (!projectName) {
+    questions.push({
+      type: 'text',
       name: 'name',
       message: 'What is your project named?',
-      default: projectName || 'my-fs-app',
-      when: !projectName // Only ask if name not provided
-    },
+      initial: 'my-fs-app'
+    });
+  }
+  
+  questions.push(
     {
-      type: 'list',
+      type: 'select',
       name: 'monorepo',
       message: 'Select a monorepo framework:',
-      choices: Object.values(MonorepoFramework)
+      choices: Object.values(MonorepoFramework).map(v => ({ title: v, value: v }))
     },
     {
-      type: 'list',
+      type: 'select',
       name: 'packageManager',
       message: 'Select a package manager:',
-      choices: Object.values(PackageManager)
+      choices: Object.values(PackageManager).map(v => ({ title: v, value: v }))
     },
     {
-      type: 'list',
-      name: 'apps.frontend.framework',
+      type: 'select',
+      name: 'frontendFramework',
       message: 'Select a frontend framework:',
-      choices: Object.values(FrontendFramework)
+      choices: Object.values(FrontendFramework).map(v => ({ title: v, value: v }))
     },
     {
-      type: 'confirm',
-      name: 'apps.frontend.typescript',
-      message: 'Use TypeScript for frontend?',
-      default: true
-    },
-    {
-      type: 'list',
-      name: 'apps.frontend.styling',
+      type: 'select',
+      name: 'styling',
       message: 'Select a styling solution:',
-      choices: ['css', 'scss', 'tailwind', 'styled-components']
+      choices: [
+        { title: 'css', value: 'css' },
+        { title: 'scss', value: 'scss' },
+        { title: 'tailwind', value: 'tailwind' },
+        { title: 'styled-components', value: 'styled-components' }
+      ]
     },
     {
       type: 'confirm',
-      name: 'apps.frontend.linting',
+      name: 'linting',
       message: 'Enable ESLint and Prettier?',
-      default: true
+      initial: true
     },
     {
-      type: 'list',
-      name: 'apps.backend.framework',
+      type: 'select',
+      name: 'backendFramework',
       message: 'Select a backend framework:',
-      choices: Object.values(BackendFramework)
+      choices: Object.values(BackendFramework).map(v => ({ title: v, value: v }))
     },
     {
-      type: 'list',
-      name: 'apps.backend.database',
+      type: 'select',
+      name: 'database',
       message: 'Select a database:',
-      choices: Object.values(Database)
+      choices: Object.values(Database).map(v => ({ title: v, value: v }))
     },
     {
-      type: 'list',
-      name: 'apps.backend.orm',
+      type: 'select',
+      name: 'orm',
       message: 'Select an ORM:',
-      choices: ['prisma', 'typeorm', 'mongoose', 'drizzle']
+      choices: [
+        { title: 'prisma', value: 'prisma' },
+        { title: 'typeorm', value: 'typeorm' },
+        { title: 'mongoose', value: 'mongoose' },
+        { title: 'drizzle', value: 'drizzle' }
+      ]
     },
     {
       type: 'confirm',
-      name: 'apps.backend.docker',
+      name: 'docker',
       message: 'Include Docker configuration?',
-      default: true
+      initial: true
     }
-  ]);
+  );
 
-  // Use provided name if available
+  const answers = await prompts(questions, {
+    onCancel: () => {
+      console.log(chalk.yellow('\n\nOperation cancelled by user'));
+      process.exit(0);
+    }
+  });
+
+  // Build config from flat answers
   const config = {
-    ...answers,
-    name: projectName || answers.name
+    name: projectName || answers.name,
+    monorepo: answers.monorepo,
+    packageManager: answers.packageManager,
+    apps: {
+      frontend: {
+        framework: answers.frontendFramework,
+        styling: answers.styling,
+        linting: answers.linting
+      },
+      backend: {
+        framework: answers.backendFramework,
+        database: answers.database,
+        orm: answers.orm,
+        docker: answers.docker
+      }
+    }
   };
 
   // Validate configuration using Zod
@@ -220,12 +268,14 @@ async function main() {
   program
     .name('create-fs-app')
     .description('Create a full-stack monorepo application')
-    .version('1.2.0');
+    .version('0.1.0');
 
   // Main create command
   program
     .argument('[name]', 'The name of your application')
     .option('-t, --template <name>', 'Use a predefined template')
+    .option('--template-url <url>', 'Use a custom template from GitHub URL')
+    .option('--preset <name>', 'Use a configuration preset')
     .option('--monorepo <framework>', 'Monorepo framework (turborepo, nx, lerna)')
     .option('--frontend <framework>', 'Frontend framework (react, next.js, vue, nuxt, angular)')
     .option('--backend <framework>', 'Backend framework (express, nest.js, fastify, koa)')
@@ -233,27 +283,127 @@ async function main() {
     .option('--orm <orm>', 'ORM (prisma, typeorm, mongoose, drizzle)')
     .option('--package-manager <pm>', 'Package manager (npm, yarn, pnpm)')
     .option('--styling <style>', 'Styling solution (css, scss, tailwind, styled-components)')
-    .option('--typescript', 'Use TypeScript (default: true)')
-    .option('--no-typescript', 'Disable TypeScript')
     .option('--linting', 'Enable linting (default: true)')
     .option('--no-linting', 'Disable linting')
     .option('--docker', 'Include Docker configuration')
     .option('--no-docker', 'Skip Docker configuration')
     .option('--no-git', 'Skip git initialization')
     .option('--no-install', 'Skip package installation')
+    .option('--no-cache', 'Skip template caching')
     .option('-y, --yes', 'Skip prompts and use defaults')
     .action(async (name: string | undefined, options) => {
       await welcome();
 
       try {
         let projectConfig: ProjectConfig;
+        let customTemplate: any = null;
         
+        // Check if using preset
+        if (options.preset) {
+          if (!name) {
+            Logger.error('Project name is required when using --preset.');
+            console.log(chalk.cyan('Usage: create-fs-app <project-name> --preset <preset-name>\n'));
+            process.exit(1);
+          }
+          
+          // Try built-in preset first
+          let preset = getBuiltinPreset(options.preset);
+          
+          // If not built-in, try user preset
+          if (!preset) {
+            preset = await loadPreset(options.preset);
+          }
+          
+          if (!preset) {
+            Logger.error(`Preset "${options.preset}" not found`);
+            console.log(chalk.cyan('\n💡 Use ') + chalk.white.bold('create-fs-app preset list') + chalk.cyan(' to see available presets.\n'));
+            process.exit(1);
+          }
+          
+          projectConfig = {
+            name,
+            ...preset.config
+          } as ProjectConfig;
+          
+          console.log();
+          const infoBox = boxen(
+            chalk.cyan.bold('🎯 Using Preset\n\n') +
+            chalk.white(`Preset: `) + chalk.green(preset.name) + '\n' +
+            (preset.description ? chalk.white(`Description: `) + chalk.gray(preset.description) : ''),
+            {
+              padding: 1,
+              margin: 1,
+              borderStyle: 'round',
+              borderColor: 'cyan'
+            }
+          );
+          console.log(infoBox);
+        }
+        // Check if using custom template URL
+        else if (options.templateUrl) {
+          if (!name) {
+            Logger.error('Project name is required when using --template-url.');
+            console.log(chalk.cyan('Usage: create-fs-app <project-name> --template-url <url>\n'));
+            process.exit(1);
+          }
+          
+          // Validate URL
+          const validation = validateTemplateUrl(options.templateUrl);
+          if (!validation.valid) {
+            Logger.error(validation.error!);
+            process.exit(1);
+          }
+          
+          // Create minimal config for custom template
+          customTemplate = createCustomTemplate(options.templateUrl);
+          
+          projectConfig = {
+            name,
+            monorepo: 'turborepo' as any,
+            packageManager: 'npm' as any,
+            apps: {
+              frontend: {
+                framework: 'react' as any,
+                styling: 'tailwind',
+                linting: true
+              },
+              backend: {
+                framework: 'express' as any,
+                database: 'postgresql' as any,
+                docker: true
+              }
+            }
+          };
+          
+          console.log();
+          const infoBox = boxen(
+            chalk.cyan.bold('🔗 Using Custom Template\n\n') +
+            chalk.white(`URL: `) + chalk.green(options.templateUrl),
+            {
+              padding: 1,
+              margin: 1,
+              borderStyle: 'round',
+              borderColor: 'cyan'
+            }
+          );
+          console.log(infoBox);
+        }
         // Check if using direct template
-        if (options.template) {
+        else if (options.template) {
           const template = getTemplateByName(options.template);
           if (!template) {
-            console.log(chalk.red(`\n❌ Template "${options.template}" not found.\n`));
-            console.log(chalk.cyan('💡 Use "create-fs-app list" to see all available templates.\n'));
+            const errorBox = boxen(
+              chalk.red.bold('❌ Template Not Found\n\n') +
+              chalk.white(`Template "${options.template}" doesn't exist.\n\n`) +
+              chalk.cyan('💡 Use ') + chalk.white.bold('create-fs-app list') + chalk.cyan(' to see available templates.'),
+              {
+                padding: 1,
+                margin: 1,
+                borderStyle: 'round',
+                borderColor: 'red'
+              }
+            );
+            console.log(errorBox);
             process.exit(1);
           }
           
@@ -264,11 +414,41 @@ async function main() {
             process.exit(1);
           }
           
-          // Extract config from template key (this is a simplified approach)
-          // You'll need to prompt for missing config or use defaults
-          console.log(chalk.yellow('\n⚠️  Direct template mode: Using template defaults for configuration.\n'));
-          projectConfig = await promptForConfiguration();
-          projectConfig.name = name;
+          // Extract configuration from template key automatically
+          const parts = template.key.split('-');
+          projectConfig = {
+            name,
+            monorepo: parts[0] as any,
+            packageManager: PackageManager.NPM,
+            apps: {
+              frontend: {
+                framework: (parts[1] === 'nextjs' ? 'next.js' : parts[1]) as any,
+                // TypeScript is always enabled
+                styling: 'tailwind',
+                linting: true
+              },
+              backend: {
+                framework: (parts[2] === 'nestjs' ? 'nest.js' : parts[2]) as any,
+                database: parts[3] as any,
+                orm: parts[4] as any,
+                docker: true
+              }
+            }
+          };
+          
+          console.log();
+          const infoBox = boxen(
+            chalk.cyan.bold('🚀 Using Template\n\n') +
+            chalk.white(`Template: `) + chalk.green(template.key) + '\n' +
+            chalk.white(`Description: `) + chalk.gray(template.metadata.description),
+            {
+              padding: 1,
+              margin: 1,
+              borderStyle: 'round',
+              borderColor: 'cyan'
+            }
+          );
+          console.log(infoBox);
         }
         // Check if stack options provided via CLI
         else if (options.monorepo || options.frontend || options.backend) {
@@ -437,6 +617,134 @@ async function main() {
       );
       
       console.log(usageBox);
+    });
+
+  // Health check command
+  program
+    .command('health')
+    .description('Run health check on current project')
+    .action(async () => {
+      try {
+        const result = await runHealthCheck();
+        displayHealthCheckResults(result);
+        process.exit(result.passed ? 0 : 1);
+      } catch (error) {
+        Logger.error('Failed to run health check');
+        console.error(error);
+        process.exit(1);
+      }
+    });
+
+  // Preset commands
+  const presetCmd = program
+    .command('preset')
+    .description('Manage configuration presets');
+
+  presetCmd
+    .command('save <name>')
+    .description('Save current configuration as a preset')
+    .option('-d, --description <desc>', 'Preset description')
+    .action(async (name: string, options) => {
+      // This would need to be called from within a project
+      Logger.error('This command must be run from within a create-fs-app project');
+      process.exit(1);
+    });
+
+  presetCmd
+    .command('list')
+    .description('List all saved presets')
+    .action(async () => {
+      try {
+        const presets = await listPresets();
+        const builtinKeys = Object.keys(BUILTIN_PRESETS);
+        
+        console.log(chalk.cyan.bold('\n📚 Available Presets\n'));
+        
+        // Built-in presets
+        console.log(chalk.bold.green('Built-in Presets:'));
+        builtinKeys.forEach(key => {
+          const preset = BUILTIN_PRESETS[key];
+          console.log(chalk.white(`  ${key}`));
+          console.log(chalk.gray(`    ${preset.description}`));
+        });
+        
+        // User presets
+        if (presets.length > 0) {
+          console.log(chalk.bold.green('\nYour Presets:'));
+          presets.forEach(preset => {
+            console.log(chalk.white(`  ${preset.name}`));
+            if (preset.description) {
+              console.log(chalk.gray(`    ${preset.description}`));
+            }
+          });
+        }
+        
+        console.log(chalk.cyan('\n💡 Use: create-fs-app my-app --preset <name>\n'));
+      } catch (error) {
+        Logger.error('Failed to list presets');
+        console.error(error);
+        process.exit(1);
+      }
+    });
+
+  presetCmd
+    .command('delete <name>')
+    .description('Delete a saved preset')
+    .action(async (name: string) => {
+      try {
+        const deleted = await deletePreset(name);
+        if (!deleted) {
+          Logger.error(`Preset "${name}" not found`);
+          process.exit(1);
+        }
+      } catch (error) {
+        Logger.error('Failed to delete preset');
+        console.error(error);
+        process.exit(1);
+      }
+    });
+
+  // Cache commands
+  const cacheCmd = program
+    .command('cache')
+    .description('Manage template cache');
+
+  cacheCmd
+    .command('clear')
+    .description('Clear template cache')
+    .action(async () => {
+      try {
+        await clearCache();
+      } catch (error) {
+        Logger.error('Failed to clear cache');
+        console.error(error);
+        process.exit(1);
+      }
+    });
+
+  cacheCmd
+    .command('stats')
+    .description('Show cache statistics')
+    .action(async () => {
+      try {
+        const stats = await getCacheStats();
+        console.log(chalk.cyan.bold('\n📊 Cache Statistics\n'));
+        console.log(chalk.white(`Total templates: ${stats.totalTemplates}`));
+        console.log(chalk.white(`Cache size: ${stats.cacheSize}`));
+        
+        if (stats.templates.length > 0) {
+          console.log(chalk.bold('\nCached Templates:'));
+          stats.templates.forEach(t => {
+            console.log(chalk.gray(`  ${t.key}`));
+            console.log(chalk.gray(`    Last used: ${new Date(t.lastUsed).toLocaleDateString()}`));
+          });
+        }
+        console.log();
+      } catch (error) {
+        Logger.error('Failed to get cache stats');
+        console.error(error);
+        process.exit(1);
+      }
     });
 
   program.parse();
