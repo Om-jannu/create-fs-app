@@ -422,6 +422,28 @@ See the **[Template Creation Guide](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)** to 
 - Submit PRs
 - Improve documentation
 
+See **[WORKFLOW.md](./WORKFLOW.md)** for the complete development workflow.
+
+**Quick start:**
+```bash
+# 1. Fork and clone
+git clone https://github.com/YOUR_USERNAME/create-fs-app.git
+
+# 2. Create feature branch
+git checkout -b feat/my-feature
+
+# 3. Make changes and test
+npm run dev
+
+# 4. Bump version
+./scripts/bump-version.sh minor
+
+# 5. Update CHANGELOG.md
+
+# 6. Create PR
+# GitHub Actions will automatically publish when merged!
+```
+
 ### 3. Share & Star
 
 - Star this repo ⭐

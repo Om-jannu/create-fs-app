@@ -1,0 +1,121 @@
+name: Publish to npm
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'website/**'
+      - '.github/**'
+      - '!.github/workflows/publish.yml'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check if version changed
+        id: version-check
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED_VERSION=$(npm view create-fs-app version 2>/dev/null || echo "0.0.0")
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "published=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
+          
+          if [ "$CURRENT_VERSION" != "$PUBLISHED_VERSION" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Version changed: $PUBLISHED_VERSION → $CURRENT_VERSION"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Version unchanged: $CURRENT_VERSION"
+          fi
+
+      - name: Publish to npm
+        if: steps.version-check.outputs.changed == 'true'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create Git tag
+        if: steps.version-check.outputs.changed == 'true'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Create GitHub Release
+        if: steps.version-check.outputs.changed == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version-check.outputs.current }}
+          release_name: Release v${{ steps.version-check.outputs.current }}
+          body: |
+            ## What's Changed
+            
+            See [CHANGELOG.md](https://github.com/Om-jannu/create-fs-app/blob/master/CHANGELOG.md) for details.
+            
+            ## Installation
+            
+            ```bash
+            npx create-fs-app@latest my-app
+            ```
+            
+            ## Links
+            
+            - [npm package](https://www.npmjs.com/package/create-fs-app)
+            - [Documentation](https://github.com/Om-jannu/create-fs-app#readme)
+          draft: false
+          prerelease: false
+
+      - name: Summary
+        if: steps.version-check.outputs.changed == 'true'
+        run: |
+          echo "## 🎉 Published to npm!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version-check.outputs.current }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Package:** [create-fs-app](https://www.npmjs.com/package/create-fs-app)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test it:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "npx create-fs-app@latest my-app" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: No publish needed
+        if: steps.version-check.outputs.changed == 'false'
+        run: |
+          echo "## ⏭️  No publish needed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version ${{ steps.version-check.outputs.current }} is already published." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To publish a new version:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Update version in package.json" >> $GITHUB_STEP_SUMMARY
+          echo "2. Update CHANGELOG.md" >> $GITHUB_STEP_SUMMARY
+          echo "3. Commit and push" >> $GITHUB_STEP_SUMMARY
