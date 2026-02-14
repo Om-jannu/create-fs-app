@@ -65,6 +65,16 @@ async function saveCacheMetadata(metadata: CacheMetadata): Promise<void> {
  * Generate cache key for a template
  */
 function getCacheKey(template: TemplateMetadata): string {
+  // For local templates, use the folder name
+  if (template.localPath) {
+    return path.basename(template.localPath);
+  }
+  
+  // For remote templates
+  if (!template.url) {
+    throw new Error('Template must have either localPath or url');
+  }
+  
   const url = template.url.replace(/https?:\/\//, '').replace(/\.git$/, '');
   const branch = template.branch || 'main';
   const subfolder = template.subfolder || '';
@@ -116,6 +126,16 @@ export async function cacheTemplate(
   template: TemplateMetadata,
   branch: string = 'main'
 ): Promise<string> {
+  // Don't cache local templates
+  if (template.localPath) {
+    Logger.debug('Skipping cache for local template');
+    return template.localPath;
+  }
+  
+  if (!template.url) {
+    throw new Error('Remote template must have a url');
+  }
+  
   await ensureCacheDir();
   
   const cacheKey = getCacheKey(template);

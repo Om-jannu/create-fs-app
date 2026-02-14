@@ -1,0 +1,29 @@
+# Exclude templates from npm package
+templates/
+
+# Exclude development files
+src/
+*.test.ts
+*.test.js
+
+# Exclude config files
+tsconfig.json
+eslint.config.js
+
+# Exclude documentation
+docs/
+*.md
+!README.md
+
+# Exclude git
+.git/
+.github/
+
+# Exclude IDE
+.vscode/
+.idea/
+
+# Exclude misc
+*.log
+*.swp
+.DS_Store

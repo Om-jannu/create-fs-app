@@ -8,6 +8,12 @@ A blazingly fast CLI tool for creating production-ready full-stack monorepo appl
 ![Version](https://img.shields.io/npm/v/create-fs-app)
 ![Downloads](https://img.shields.io/npm/dm/create-fs-app)
 
+## 🎬 Demo
+
+https://github.com/Om-jannu/create-fs-app/raw/master/assets/create-fs-app.mp4
+
+> Watch create-fs-app in action - from zero to full-stack app in seconds!
+
 ## ✨ Features
 
 ### 🏗️ **Monorepo Frameworks**
@@ -380,23 +386,24 @@ If you choose Docker support, your project will include:
 
 1. **Choose your stack** - Select frameworks via interactive prompts or CLI options
 2. **Template matching** - CLI finds the perfect pre-built template
-3. **Clone & customize** - Template is cloned and customized with your project name
+3. **Clone & customize** - Template is cloned from GitHub and customized with your project name
 4. **Ready to code** - Complete, working application in seconds
 
 ### Why Template-Based?
 
-- ⚡ **Fast** - Clone instead of generate (10x faster)
+- ⚡ **Fast** - Clone instead of generate (10x faster with caching)
 - 🎯 **Tested** - Every template is a real, working project
-- 🔄 **Up-to-date** - Templates maintained independently
+- 🔄 **Up-to-date** - Templates maintained in separate repository
 - 🤝 **Community** - Easy for anyone to contribute templates
-- 📦 **Lightweight** - CLI stays small (~2MB)
+- 📦 **Lightweight** - CLI stays tiny (39.5 KB compressed)
 
 ## 📚 Documentation
 
 - **[CLI Usage Guide](./docs/CLI_USAGE.md)** - Complete CLI reference and examples
-- **[Template Guide](./docs/TEMPLATE_GUIDE.md)** - How to create templates
+- **[Quick Reference](./docs/QUICK_REFERENCE.md)** - Quick command reference
+- **[Template Contribution Guide](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)** - How to create templates
 - **[Contributing](./CONTRIBUTING.md)** - Contribution guidelines
-- **[Security](./SECURITY.md)** - Security policy
+- **[Changelog](./CHANGELOG.md)** - Version history
 
 ## 🤝 Contributing
 
@@ -406,7 +413,7 @@ We welcome contributions! There are many ways to help:
 
 The fastest way to contribute! Create templates for popular stack combinations.
 
-See the **[Template Creation Guide](./docs/TEMPLATE_GUIDE.md)** to get started.
+See the **[Template Creation Guide](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)** to get started.
 
 ### 2. Improve the CLI
 
@@ -414,6 +421,28 @@ See the **[Template Creation Guide](./docs/TEMPLATE_GUIDE.md)** to get started.
 - Suggest features
 - Submit PRs
 - Improve documentation
+
+See **[WORKFLOW.md](./WORKFLOW.md)** for the complete development workflow.
+
+**Quick start:**
+```bash
+# 1. Fork and clone
+git clone https://github.com/YOUR_USERNAME/create-fs-app.git
+
+# 2. Create feature branch
+git checkout -b feat/my-feature
+
+# 3. Make changes and test
+npm run dev
+
+# 4. Bump version
+./scripts/bump-version.sh minor
+
+# 5. Update CHANGELOG.md
+
+# 6. Create PR
+# GitHub Actions will automatically publish when merged!
+```
 
 ### 3. Share & Star
 
@@ -434,22 +463,30 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-### Phase 1 (Current)
+### Phase 1 (Current - v0.1.0)
 - [x] Template-based architecture
 - [x] Interactive CLI with beautiful prompts
 - [x] CLI options mode for automation
+- [x] Template caching system (10x faster)
+- [x] Configuration presets
+- [x] Custom template URLs
+- [x] Project health check
 - [x] Comprehensive error handling
-- [ ] Create 5-10 core templates
+- [x] Replaced inquirer with prompts (lighter)
+- [ ] Create 10+ core templates
 
-### Phase 2
+### Phase 2 (Next)
+- [ ] Separate templates repository
+- [ ] Website for template browsing
 - [ ] 25+ templates covering popular stacks
-- [ ] Template caching for offline use
-- [ ] Custom template URLs
+- [ ] Community template contributions
+- [ ] Template versioning
 
-### Phase 3
+### Phase 3 (Future)
 - [ ] Template marketplace
 - [ ] VS Code extension
 - [ ] Project migration tool
+- [ ] Interactive template builder
 
 ## 🌟 Showcase
 
