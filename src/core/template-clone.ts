@@ -31,9 +31,25 @@ export async function cloneTemplate(
   targetDir: string,
   branch: string = 'main'
 ): Promise<void> {
-  const { url, subfolder } = template;
+  const { url, subfolder, localPath } = template;
 
   try {
+    // If it's a local template, just copy it
+    if (localPath) {
+      Logger.verbose(`Using local template from: ${localPath}`);
+      
+      // Check if local template exists
+      try {
+        await fs.access(localPath);
+      } catch {
+        throw new Error(`Local template not found at: ${localPath}`);
+      }
+      
+      // Copy local template to target
+      await fs.cp(localPath, targetDir, { recursive: true });
+      return;
+    }
+    
     // Check if template is cached
     const cachedPath = await getCachedTemplatePath(template);
     
@@ -45,7 +61,7 @@ export async function cloneTemplate(
     
     Logger.verbose('Template not cached, downloading...');
     
-    if (subfolder) {
+    if (subfolder && url) {
       // Clone entire repo to temp directory, then copy specific subfolder
       // Use UUID to prevent race conditions with simultaneous runs
       const tempDir = path.join(process.cwd(), `.temp-${randomUUID()}`);
@@ -91,7 +107,7 @@ export async function cloneTemplate(
         } catch {}
         throw error;
       }
-    } else {
+    } else if (url) {
       // Direct clone (for individual template repositories)
       await execa('git', [
         'clone',

@@ -520,18 +520,49 @@ npx create-fs-app my-app ... --no-install
 2. Use interactive mode to see suggestions
 3. Contribute the template combination!
 
-## Advanced Usage
+### Custom Template URL
 
-### Custom Template URL (Future Feature)
+Use any GitHub repository as a template:
 
-Coming soon:
 ```bash
-npx create-fs-app my-app --template-url https://github.com/me/my-template
+npx create-fs-app my-app --template-url https://github.com/user/repo
 ```
 
-### Template Caching (Future Feature)
+### Configuration Presets
 
-Coming soon - templates will be cached locally for offline use.
+Use built-in or custom presets:
+
+```bash
+# List available presets
+npx create-fs-app preset list
+
+# Use a preset
+npx create-fs-app my-app --preset saas-starter
+```
+
+Built-in presets:
+- `saas-starter` - Turborepo + Next.js + NestJS + PostgreSQL + Prisma
+- `ecommerce` - Turborepo + React + Express + MongoDB + Mongoose
+- `minimal` - Turborepo + React + Express + PostgreSQL (no Docker)
+
+### Cache Management
+
+```bash
+# View cache statistics
+npx create-fs-app cache stats
+
+# Clear template cache
+npx create-fs-app cache clear
+```
+
+### Health Check
+
+Check your project's health:
+
+```bash
+cd my-project
+npx create-fs-app health
+```
 
 ## Getting Help
 

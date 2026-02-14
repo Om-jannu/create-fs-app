@@ -380,23 +380,24 @@ If you choose Docker support, your project will include:
 
 1. **Choose your stack** - Select frameworks via interactive prompts or CLI options
 2. **Template matching** - CLI finds the perfect pre-built template
-3. **Clone & customize** - Template is cloned and customized with your project name
+3. **Clone & customize** - Template is cloned from GitHub and customized with your project name
 4. **Ready to code** - Complete, working application in seconds
 
 ### Why Template-Based?
 
-- ⚡ **Fast** - Clone instead of generate (10x faster)
+- ⚡ **Fast** - Clone instead of generate (10x faster with caching)
 - 🎯 **Tested** - Every template is a real, working project
-- 🔄 **Up-to-date** - Templates maintained independently
+- 🔄 **Up-to-date** - Templates maintained in separate repository
 - 🤝 **Community** - Easy for anyone to contribute templates
-- 📦 **Lightweight** - CLI stays small (~2MB)
+- 📦 **Lightweight** - CLI stays tiny (39.5 KB compressed)
 
 ## 📚 Documentation
 
 - **[CLI Usage Guide](./docs/CLI_USAGE.md)** - Complete CLI reference and examples
-- **[Template Guide](./docs/TEMPLATE_GUIDE.md)** - How to create templates
+- **[Quick Reference](./docs/QUICK_REFERENCE.md)** - Quick command reference
+- **[Template Contribution Guide](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)** - How to create templates
 - **[Contributing](./CONTRIBUTING.md)** - Contribution guidelines
-- **[Security](./SECURITY.md)** - Security policy
+- **[Changelog](./CHANGELOG.md)** - Version history
 
 ## 🤝 Contributing
 
@@ -406,7 +407,7 @@ We welcome contributions! There are many ways to help:
 
 The fastest way to contribute! Create templates for popular stack combinations.
 
-See the **[Template Creation Guide](./docs/TEMPLATE_GUIDE.md)** to get started.
+See the **[Template Creation Guide](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)** to get started.
 
 ### 2. Improve the CLI
 
@@ -434,22 +435,30 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-### Phase 1 (Current)
+### Phase 1 (Current - v0.1.0)
 - [x] Template-based architecture
 - [x] Interactive CLI with beautiful prompts
 - [x] CLI options mode for automation
+- [x] Template caching system (10x faster)
+- [x] Configuration presets
+- [x] Custom template URLs
+- [x] Project health check
 - [x] Comprehensive error handling
-- [ ] Create 5-10 core templates
+- [x] Replaced inquirer with prompts (lighter)
+- [ ] Create 10+ core templates
 
-### Phase 2
+### Phase 2 (Next)
+- [ ] Separate templates repository
+- [ ] Website for template browsing
 - [ ] 25+ templates covering popular stacks
-- [ ] Template caching for offline use
-- [ ] Custom template URLs
+- [ ] Community template contributions
+- [ ] Template versioning
 
-### Phase 3
+### Phase 3 (Future)
 - [ ] Template marketplace
 - [ ] VS Code extension
 - [ ] Project migration tool
+- [ ] Interactive template builder
 
 ## 🌟 Showcase
 

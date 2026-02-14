@@ -8,49 +8,52 @@
  */
 
 import { ProjectConfig, MonorepoFramework, FrontendFramework, BackendFramework, Database } from '../types/index.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export interface TemplateMetadata {
-  url: string;
+  url?: string;
   branch?: string;
-  subfolder?: string; // Path to template within the repo (e.g., 'templates/turborepo-nextjs-nestjs-postgresql-prisma')
+  subfolder?: string;
+  localPath?: string; // Path to local template (for development only)
   description: string;
   features: string[];
 }
 
-// Single monorepo containing all templates
-const TEMPLATE_REPO_URL = 'https://github.com/Om-jannu/create-fs-app-templates';
-const TEMPLATE_BRANCH = 'main';
-const TEMPLATES_FOLDER = 'templates';
+// Templates repository (same repo, but templates/ folder is excluded from npm package)
+const TEMPLATE_REPO_URL = 'https://github.com/Om-jannu/create-fs-app';
+const TEMPLATE_BRANCH = 'master';
+
+// Local templates directory (only used in development)
+const LOCAL_TEMPLATES_DIR = path.join(__dirname, '../../templates');
 
 /**
- * Template registry - maps configuration to template URLs
+ * Template registry - maps configuration to template metadata
  * 
- * Strategy:
- * 1. Create template repos with naming: template-{stack}
- * 2. Each template is a complete, working project
- * 3. Templates include placeholder variables for customization
+ * Templates are stored in a separate GitHub repository to keep the CLI package small.
+ * Repository: https://github.com/Om-jannu/create-fs-app-templates
+ * 
+ * For local development, templates can be in the templates/ folder.
  */
 export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
-  // All templates are in a single repository under the 'templates' folder
-  // Repository structure: create-fs-app-templates/templates/{template-name}/
-  
   'turborepo-nextjs-nestjs-postgresql-prisma': {
     url: TEMPLATE_REPO_URL,
     branch: TEMPLATE_BRANCH,
-    subfolder: `${TEMPLATES_FOLDER}/turborepo-nextjs-nestjs-postgresql-prisma`,
+    subfolder: 'templates/turborepo-nextjs-nestjs-postgresql-prisma',
     description: 'Turborepo with Next.js, NestJS, PostgreSQL, and Prisma',
     features: ['TypeScript', 'Tailwind CSS', 'Docker', 'ESLint', 'Prettier']
   },
   'turborepo-react-express-mongodb-mongoose': {
     url: TEMPLATE_REPO_URL,
     branch: TEMPLATE_BRANCH,
-    subfolder: `${TEMPLATES_FOLDER}/turborepo-react-express-mongodb-mongoose`,
+    subfolder: 'templates/turborepo-react-express-mongodb-mongoose',
     description: 'Turborepo with React (Vite), Express, MongoDB, and Mongoose',
     features: ['TypeScript', 'Tailwind CSS', 'Docker', 'Testing']
   },
-  
-  // Add more templates as you create them
-  // All in the same repository under templates/ folder
 };
 
 /**
@@ -108,6 +111,13 @@ export function createCustomTemplate(
     description: 'Custom template from URL',
     features: ['Custom']
   };
+}
+
+/**
+ * Get local templates directory
+ */
+export function getLocalTemplatesDir(): string {
+  return LOCAL_TEMPLATES_DIR;
 }
 
 /**

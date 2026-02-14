@@ -9,7 +9,7 @@ Thank you for your interest in contributing! 🎉
 The best way to contribute is by creating templates for popular stack combinations.
 
 **Getting Started:**
-1. Read [docs/TEMPLATE_GUIDE.md](./docs/TEMPLATE_GUIDE.md)
+1. Read [docs/TEMPLATE_CONTRIBUTION_GUIDE.md](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)
 2. Build a working full-stack application with your chosen stack
 3. Add placeholders (`{{PROJECT_NAME}}`, etc.)
 4. Push to GitHub
