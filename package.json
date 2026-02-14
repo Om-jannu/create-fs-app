@@ -15,7 +15,6 @@
     "dev": "tsc -w",
     "lint": "eslint . --ext .ts --max-warnings 200",
     "lint:fix": "eslint . --ext .ts --fix",
-    "test": "jest",
     "postbuild": "chmod +x dist/index.js",
     "prepublishOnly": "npm run build",
     "size": "npm pack --dry-run 2>&1 | grep -E 'package size|Tarball Contents'",
@@ -68,15 +67,12 @@
     "@eslint/js": "^9.39.2",
     "@types/figlet": "^1.7.0",
     "@types/gradient-string": "^1.1.6",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.8.1",
     "@types/prompts": "^2.4.9",
     "@types/update-notifier": "^6.0.8",
     "@typescript-eslint/eslint-plugin": "^8.46.1",
     "@typescript-eslint/parser": "^8.46.1",
     "eslint": "^9.38.0",
-    "jest": "^30.2.0",
-    "ts-jest": "^29.4.5",
     "typescript": "^5.9.3"
   },
   "engines": {

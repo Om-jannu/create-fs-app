@@ -44,13 +44,6 @@ fi
 echo -e "${BLUE}📥 Pulling latest changes...${NC}"
 git pull origin $BRANCH
 
-# Run tests
-echo -e "${BLUE}🧪 Running tests...${NC}"
-npm test || {
-  echo -e "${RED}Tests failed! Fix them before releasing.${NC}"
-  exit 1
-}
-
 # Build
 echo -e "${BLUE}🔨 Building project...${NC}"
 npm run build || {

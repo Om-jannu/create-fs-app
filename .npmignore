@@ -3,14 +3,12 @@ templates/
 
 # Exclude development files
 src/
-tests/
 *.test.ts
 *.test.js
 
 # Exclude config files
 tsconfig.json
-jest.config.js
-.eslintrc.js
+eslint.config.js
 
 # Exclude documentation
 docs/
