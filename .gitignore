@@ -39,3 +39,4 @@ coverage/
 *.pem
 .turbo
 temp
+.npmrc
