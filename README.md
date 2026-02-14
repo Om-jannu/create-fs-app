@@ -8,6 +8,12 @@ A blazingly fast CLI tool for creating production-ready full-stack monorepo appl
 ![Version](https://img.shields.io/npm/v/create-fs-app)
 ![Downloads](https://img.shields.io/npm/dm/create-fs-app)
 
+## 🎬 Demo
+
+https://github.com/Om-jannu/create-fs-app/raw/master/assets/create-fs-app.mp4
+
+> Watch create-fs-app in action - from zero to full-stack app in seconds!
+
 ## ✨ Features
 
 ### 🏗️ **Monorepo Frameworks**
