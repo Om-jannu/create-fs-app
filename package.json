@@ -1,6 +1,6 @@
 {
   "name": "create-fs-app",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "A CLI tool to create customizable full-stack monorepo applications",
   "main": "./dist/index.js",
   "bin": "./dist/index.js",
@@ -19,7 +19,12 @@
     "prepublishOnly": "npm run build",
     "size": "npm pack --dry-run 2>&1 | grep -E 'package size|Tarball Contents'",
     "size:full": "npm pack --dry-run",
-    "analyze": "node scripts/package-info.js"
+    "analyze": "node scripts/package-info.js",
+    "release:patch": "npm version patch -m 'Release v%s' && npm publish && git push --follow-tags",
+    "release:minor": "npm version minor -m 'Release v%s' && npm publish && git push --follow-tags",
+    "release:major": "npm version major -m 'Release v%s' && npm publish && git push --follow-tags",
+    "release:check": "npm run build && npm pack --dry-run",
+    "release:test": "npm run build && npm pack && echo 'Test the .tgz file before publishing'"
   },
   "keywords": [
     "full-stack",
