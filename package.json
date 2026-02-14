@@ -1,6 +1,6 @@
 {
   "name": "create-fs-app",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A CLI tool to create customizable full-stack monorepo applications",
   "main": "./dist/index.js",
   "bin": "./dist/index.js",
