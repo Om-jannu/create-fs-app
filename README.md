@@ -1,7 +1,5 @@
 <div align="center">
-  <img src="./assets/logo-no-bg.png" alt="create-fs-app" width="200"/>
-  
-  # create-fs-app
+  <img src="./assets/logo-no-bg.png" alt="create-fs-app" width="500"/>
   
   **Stop configuring. Start building.**
   
