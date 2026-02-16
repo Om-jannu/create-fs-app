@@ -1,633 +1,378 @@
 # CLI Usage Guide
 
-Complete guide to using `create-fs-app` CLI with all available options.
+Complete reference for using `create-fs-app`.
 
-## Table of Contents
-
-- [Interactive Mode](#interactive-mode)
-- [CLI Options Mode](#cli-options-mode)
-- [Direct Template Mode](#direct-template-mode)
-- [Commands](#commands)
-- [Examples](#examples)
-
-## Interactive Mode
-
-The default and recommended way for first-time users.
+## Quick Start
 
 ```bash
-npx create-fs-app my-app
+npx create-fs-app@latest my-app
 ```
 
-This will:
-1. Show welcome screen
-2. Ask you questions about your stack
-3. Match your choices to a template
-4. Clone and customize the template
-5. Initialize git and install dependencies
+## Usage Modes
 
-## CLI Options Mode
+### 1. Interactive Mode (Recommended)
 
-Skip the interactive prompts by providing stack options directly.
-
-### Basic Syntax
+Answer a few questions to configure your stack:
 
 ```bash
-npx create-fs-app <project-name> \
-  --monorepo <framework> \
-  --frontend <framework> \
-  --backend <framework> \
-  --database <db> \
-  [additional options]
+npx create-fs-app@latest my-app
 ```
 
-### Required Options
+### 2. CLI Mode
 
-When using CLI options mode, these are **required**:
-
-| Option | Description | Valid Values |
-|--------|-------------|--------------|
-| `--monorepo` | Monorepo framework | `turborepo`, `nx`, `lerna` |
-| `--frontend` | Frontend framework | `react`, `next.js`, `vue`, `nuxt`, `angular` |
-| `--backend` | Backend framework | `express`, `nest.js`, `fastify`, `koa` |
-| `--database` | Database | `postgresql`, `mongodb`, `mysql`, `sqlite` |
-
-### Optional Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--orm <name>` | ORM/ODM | (none) |
-| `--package-manager <pm>` | Package manager | `npm` |
-| `--styling <solution>` | Styling solution | `tailwind` |
-| `--linting` | Enable linting | `true` |
-| `--no-linting` | Disable linting | - |
-| `--docker` | Include Docker | `true` |
-| `--no-docker` | Skip Docker | - |
-| `--no-git` | Skip git init | - |
-| `--no-install` | Skip npm install | - |
-
-### Valid Values Reference
-
-#### Monorepo Frameworks
-- `turborepo`
-- `nx`
-- `lerna`
-
-#### Frontend Frameworks
-- `react` - React with Vite
-- `next.js` - Next.js
-- `vue` - Vue 3
-- `nuxt` - Nuxt 3
-- `angular` - Angular
-
-#### Backend Frameworks
-- `express` - Express.js
-- `nest.js` - NestJS
-- `fastify` - Fastify
-- `koa` - Koa
-
-#### Databases
-- `postgresql` - PostgreSQL
-- `mongodb` - MongoDB
-- `mysql` - MySQL
-- `sqlite` - SQLite
-
-#### ORMs
-- `prisma` - Prisma (SQL)
-- `typeorm` - TypeORM (SQL)
-- `mongoose` - Mongoose (MongoDB)
-- `drizzle` - Drizzle ORM (SQL)
-
-#### Package Managers
-- `npm`
-- `yarn`
-- `pnpm`
-
-#### Styling Solutions
-- `css` - Plain CSS
-- `scss` - SCSS/SASS
-- `tailwind` - Tailwind CSS
-- `styled-components` - Styled Components
-
-## Direct Template Mode
-
-Use a specific template by name.
+Specify everything via flags:
 
 ```bash
-npx create-fs-app my-app --template <template-name>
-```
-
-This mode:
-- Skips stack selection
-- Uses a pre-defined template
-- Faster if you know exactly what you want
-
-See available templates:
-```bash
-npx create-fs-app list
-```
-
-Get template info:
-```bash
-npx create-fs-app info <template-name>
-```
-
-## Commands
-
-### Create Project (Default)
-
-```bash
-npx create-fs-app [project-name] [options]
-```
-
-Creates a new project. If `project-name` is omitted in interactive mode, you'll be prompted for it.
-
-### List Templates
-
-```bash
-npx create-fs-app list
-# or
-npx create-fs-app ls
-```
-
-Shows all available templates with descriptions and features.
-
-### Show Template Info
-
-```bash
-npx create-fs-app info <template-name>
-```
-
-Shows detailed information about a specific template.
-
-### Help
-
-```bash
-npx create-fs-app --help
-```
-
-Shows help message with all available options.
-
-### Version
-
-```bash
-npx create-fs-app --version
-```
-
-Shows the CLI version.
-
-## Examples
-
-### Example 1: Complete CLI Options
-
-Create a Turborepo project with Next.js, NestJS, PostgreSQL, and Prisma:
-
-```bash
-npx create-fs-app my-saas-app \
-  --monorepo turborepo \
-  --frontend next.js \
-  --backend nest.js \
-  --database postgresql \
-  --orm prisma \
-  --package-manager pnpm \
-  --styling tailwind \
-  --docker
-```
-
-**Output:**
-```
-📋 Configuration from CLI options:
-
-  Project: my-saas-app
-  Monorepo: turborepo
-  Frontend: next.js
-  Backend: nest.js
-  Database: postgresql
-  ORM: prisma
-  Package Manager: pnpm
-
-⬇️  Downloading template...
-✓ Template downloaded
-
-🔧 Customizing template...
-✓ Template customized
-
-📝 Initializing git repository...
-✓ Initialized git repository
-
-📦 Installing dependencies...
-✓ Dependencies installed
-
-✨ Project created successfully!
-```
-
-### Example 2: Minimal Options
-
-Only required options (uses defaults for the rest):
-
-```bash
-npx create-fs-app my-blog \
-  --monorepo nx \
-  --frontend react \
-  --backend express \
-  --database mongodb
-```
-
-This will use:
-- npm as package manager
-- Tailwind for styling
-- TypeScript (always enabled - all projects use TypeScript)
-- Linting enabled
-- Docker included
-
-### Example 3: Without Docker or Linting
-
-```bash
-npx create-fs-app my-api \
-  --monorepo turborepo \
-  --frontend vue \
-  --backend fastify \
-  --database postgresql \
-  --orm drizzle \
-  --no-docker \
-  --no-linting
-```
-
-### Example 4: Skip Installation
-
-Create project but skip dependency installation:
-
-```bash
-npx create-fs-app my-app \
-  --monorepo turborepo \
-  --frontend next.js \
-  --backend nest.js \
-  --database postgresql \
-  --no-install
-```
-
-Then install later:
-```bash
-cd my-app
-npm install
-```
-
-### Example 5: Direct Template Usage
-
-If you know the exact template you want:
-
-```bash
-npx create-fs-app my-app --template turborepo-nextjs-nestjs-postgresql-prisma
-```
-
-### Example 6: Interactive Mode with Project Name
-
-Provide project name, then answer questions interactively:
-
-```bash
-npx create-fs-app my-awesome-app
-# Then answer the prompts
-```
-
-## Workflow Comparison
-
-### Interactive Mode (Default)
-
-**Best for:** First-time users, exploring options
-
-```bash
-npx create-fs-app my-app
-# 1. Welcome screen
-# 2. Answer ~8-10 questions
-# 3. Template matched
-# 4. Project created
-```
-
-⏱️ Time: ~2-3 minutes (with reading prompts)
-
-### CLI Options Mode
-
-**Best for:** Automation, scripts, repeated usage
-
-```bash
-npx create-fs-app my-app \
-  --monorepo turborepo \
-  --frontend next.js \
-  --backend nest.js \
-  --database postgresql \
-  --orm prisma
-# Project created immediately
-```
-
-⏱️ Time: ~30-60 seconds
-
-### Direct Template Mode
-
-**Best for:** Known template, fastest setup
-
-```bash
-npx create-fs-app my-app --template turborepo-nextjs-nestjs-postgresql-prisma
-# Project created immediately
-```
-
-⏱️ Time: ~20-30 seconds
-
-## CI/CD Usage
-
-Perfect for automated environments:
-
-```bash
-#!/bin/bash
-
-# Example: Create project in CI/CD
-npx create-fs-app $PROJECT_NAME \
-  --monorepo turborepo \
-  --frontend next.js \
-  --backend nest.js \
-  --database postgresql \
-  --orm prisma \
-  --package-manager pnpm \
-  --no-git \
-  --no-install
-
-# Custom setup
-cd $PROJECT_NAME
-pnpm install
-pnpm run build
-```
-
-## Scripts and Automation
-
-### Shell Script
-
-```bash
-#!/bin/bash
-
-# create-my-stack.sh
-PROJECT_NAME=$1
-
-if [ -z "$PROJECT_NAME" ]; then
-  echo "Usage: ./create-my-stack.sh <project-name>"
-  exit 1
-fi
-
-npx create-fs-app "$PROJECT_NAME" \
+npx create-fs-app@latest my-app \
   --monorepo turborepo \
   --frontend next.js \
   --backend nest.js \
   --database postgresql \
   --orm prisma \
   --package-manager pnpm
-
-echo "✅ Project $PROJECT_NAME created!"
-echo "Next: cd $PROJECT_NAME && pnpm dev"
 ```
 
-Usage:
-```bash
-chmod +x create-my-stack.sh
-./create-my-stack.sh my-new-project
-```
+### 3. Template Mode
 
-### NPM Script
-
-In your `package.json`:
-
-```json
-{
-  "scripts": {
-    "create:project": "npx create-fs-app",
-    "create:full": "npx create-fs-app --monorepo turborepo --frontend next.js --backend nest.js --database postgresql --orm prisma"
-  }
-}
-```
-
-## Error Handling
-
-### Missing Required Options
+Use a pre-built template:
 
 ```bash
-npx create-fs-app my-app --monorepo turborepo --frontend next.js
-
-# Error:
-❌ When using CLI options, you must provide:
-  --monorepo <framework>
-  --frontend <framework>
-  --backend <framework>
-  --database <db>
-
-💡 Or run without options for interactive mode.
+npx create-fs-app@latest my-app --template turborepo-nextjs-nestjs-postgresql-prisma
 ```
 
-### Invalid Values
+### 4. Preset Mode
+
+Use a saved configuration:
 
 ```bash
-npx create-fs-app my-app \
-  --monorepo invalid-framework \
-  --frontend next.js \
-  --backend nest.js \
-  --database postgresql
-
-# Error:
-❌ Invalid monorepo framework: "invalid-framework"
-
-Valid options: turborepo, nx, lerna
+npx create-fs-app@latest my-app --preset saas-starter
 ```
 
-### Template Not Found
+## All Commands
+
+### Project Creation
 
 ```bash
-npx create-fs-app my-app \
-  --monorepo turborepo \
-  --frontend angular \
-  --backend koa \
-  --database sqlite
+# Interactive mode
+npx create-fs-app@latest my-app
 
-# If this combination doesn't exist:
-⚠️  No exact template match found for your configuration.
+# With options
+npx create-fs-app@latest my-app [options]
 
-📋 Available similar templates:
-   1. Turborepo with Next.js, NestJS, PostgreSQL, and Prisma
-   2. Turborepo with React, Express, MongoDB, and Mongoose
-   3. Nx workspace with Next.js, NestJS, PostgreSQL, and Prisma
+# With template
+npx create-fs-app@latest my-app --template <name>
 
-💡 Tip: You can contribute this template combination to our repository!
-   Visit: https://github.com/create-fs-app-templates
+# With preset
+npx create-fs-app@latest my-app --preset <name>
+
+# With custom template URL
+npx create-fs-app@latest my-app --template-url https://github.com/user/repo
 ```
 
-## Tips & Best Practices
-
-### 1. Start Interactive, Then Use CLI
-
-First time: Use interactive mode to explore options
-```bash
-npx create-fs-app my-first-app
-# See all available options
-```
-
-Later: Use CLI options for speed
-```bash
-npx create-fs-app my-next-app --monorepo turborepo ...
-```
-
-### 2. Check Available Templates First
+### Template Commands
 
 ```bash
-npx create-fs-app list
-# See what's available before choosing
+# List all templates
+npx create-fs-app@latest list
+
+# Get template details
+npx create-fs-app@latest info <template-name>
 ```
 
-### 3. Use Template Mode for Exact Matches
-
-If a template exists for your stack:
-```bash
-npx create-fs-app my-app --template <exact-template-name>
-```
-
-### 4. Skip Installation in CI/CD
+### Preset Commands
 
 ```bash
-npx create-fs-app my-app ... --no-install
-# Install with your preferred method
+# List all presets
+npx create-fs-app@latest preset list
+
+# Delete a preset
+npx create-fs-app@latest preset delete <name>
 ```
 
-### 5. Version Control
-
-Always use `--no-git` if you're creating in an existing repo:
-```bash
-npx create-fs-app my-app ... --no-git
-```
-
-## Troubleshooting
-
-### Problem: "Command not found"
-
-**Solution:** Use `npx`:
-```bash
-npx create-fs-app my-app
-```
-
-### Problem: Slow template download
-
-**Solution:** Check internet connection or use `--no-install` to skip deps:
-```bash
-npx create-fs-app my-app ... --no-install
-```
-
-### Problem: Template not found for your stack
-
-**Solution:**
-1. Check available templates: `npx create-fs-app list`
-2. Use interactive mode to see suggestions
-3. Contribute the template combination!
-
-### Custom Template URL
-
-Use any GitHub repository as a template:
-
-```bash
-npx create-fs-app my-app --template-url https://github.com/user/repo
-```
-
-### Configuration Presets
-
-Use built-in or custom presets:
-
-```bash
-# List available presets
-npx create-fs-app preset list
-
-# Use a preset
-npx create-fs-app my-app --preset saas-starter
-```
-
-Built-in presets:
-- `saas-starter` - Turborepo + Next.js + NestJS + PostgreSQL + Prisma
-- `ecommerce` - Turborepo + React + Express + MongoDB + Mongoose
-- `minimal` - Turborepo + React + Express + PostgreSQL (no Docker)
-
-### Cache Management
+### Cache Commands
 
 ```bash
 # View cache statistics
-npx create-fs-app cache stats
+npx create-fs-app@latest cache stats
 
 # Clear template cache
-npx create-fs-app cache clear
+npx create-fs-app@latest cache clear
 ```
 
 ### Health Check
 
-Check your project's health:
+```bash
+# Run inside a project
+cd my-app
+npx create-fs-app@latest health
+```
+
+### Help & Version
 
 ```bash
-cd my-project
-npx create-fs-app health
+# Show help
+npx create-fs-app@latest --help
+
+# Show version
+npx create-fs-app@latest --version
 ```
 
-## Getting Help
+## CLI Options
 
-- **Help command:** `npx create-fs-app --help`
-- **List templates:** `npx create-fs-app list`
-- **Template info:** `npx create-fs-app info <name>`
-- **Issues:** https://github.com/Om-jannu/create-fs-app/issues
-- **Discussions:** https://github.com/Om-jannu/create-fs-app/discussions
+### Stack Options
 
-## Error Handling
+| Option | Description | Values |
+|--------|-------------|--------|
+| `--monorepo <framework>` | Monorepo framework | `turborepo`, `nx`, `lerna` |
+| `--frontend <framework>` | Frontend framework | `react`, `next.js`, `vue`, `nuxt`, `angular` |
+| `--backend <framework>` | Backend framework | `express`, `nest.js`, `fastify`, `koa` |
+| `--database <db>` | Database | `postgresql`, `mongodb`, `mysql`, `sqlite` |
+| `--orm <orm>` | ORM/ODM | `prisma`, `typeorm`, `mongoose`, `drizzle` |
+| `--package-manager <pm>` | Package manager | `npm`, `yarn`, `pnpm` |
+| `--styling <solution>` | Styling solution | `css`, `scss`, `tailwind`, `styled-components` |
 
-### Invalid Option Values
+### Template Options
 
-If you provide an invalid framework name:
+| Option | Description |
+|--------|-------------|
+| `-t, --template <name>` | Use a specific template |
+| `--template-url <url>` | Use custom GitHub template |
+| `--preset <name>` | Use a configuration preset |
+
+### Feature Flags
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--linting` | Enable linting | `true` |
+| `--no-linting` | Disable linting | - |
+| `--docker` | Include Docker | `true` |
+| `--no-docker` | Skip Docker | - |
+| `--no-git` | Skip git initialization | `false` |
+| `--no-install` | Skip package installation | `false` |
+| `--no-cache` | Skip template caching | `false` |
+
+## Examples
+
+### Example 1: SaaS Application
 
 ```bash
-npx create-fs-app my-app --monorepo invalid-name --frontend next.js --backend nest.js --database postgresql
+npx create-fs-app@latest my-saas \
+  --monorepo turborepo \
+  --frontend next.js \
+  --backend nest.js \
+  --database postgresql \
+  --orm prisma \
+  --package-manager pnpm
 ```
 
-**Output:**
-```
-❌ Invalid monorepo framework: "invalid-name"
-Valid options: turborepo, nx, lerna
-```
-
-### Missing Required Options
+### Example 2: E-commerce Site
 
 ```bash
-npx create-fs-app my-app --monorepo turborepo
+npx create-fs-app@latest my-shop \
+  --monorepo turborepo \
+  --frontend react \
+  --backend express \
+  --database mongodb \
+  --orm mongoose
 ```
 
-**Output:**
-```
-❌ When using CLI options, you must provide:
-  --monorepo <framework>
-  --frontend <framework>
-  --backend <framework>
-  --database <db>
-
-💡 Or run without options for interactive mode.
-```
-
-### Template Not Found
-
-Valid options but no template exists:
+### Example 3: Using a Template
 
 ```bash
-npx create-fs-app my-app --monorepo lerna --frontend angular --backend koa --database sqlite
+npx create-fs-app@latest my-app --template turborepo-nextjs-nestjs-postgresql-prisma
 ```
 
-**Output:**
-```
-⚠️  No exact template match found for your configuration.
+### Example 4: Using a Preset
 
-📋 Available similar templates:
-   1. Turborepo with Next.js, NestJS, PostgreSQL, and Prisma
-   2. Turborepo with React, Express, MongoDB, and Mongoose
-
-💡 Tip: You can contribute this template combination!
+```bash
+npx create-fs-app@latest my-app --preset saas-starter
 ```
 
-**Note:** The CLI is **case-insensitive** for framework names.
+### Example 5: Custom Template from GitHub
 
-## Related Documentation
+```bash
+npx create-fs-app@latest my-app --template-url https://github.com/Om-jannu/create-fs-app-templates
+```
 
-- [README.md](../README.md) - Main documentation
-- [TEMPLATE_GUIDE.md](./TEMPLATE_GUIDE.md) - Creating templates
+### Example 6: Skip Installation
 
+```bash
+npx create-fs-app@latest my-app --no-install
+cd my-app
+npm install
+```
+
+### Example 7: Minimal Setup
+
+```bash
+npx create-fs-app@latest my-app \
+  --monorepo turborepo \
+  --frontend react \
+  --backend express \
+  --database postgresql \
+  --no-docker \
+  --no-linting
+```
+
+## Built-in Presets
+
+### saas-starter
+Modern SaaS application stack
+- Turborepo + Next.js + NestJS
+- PostgreSQL + Prisma
+- Tailwind CSS + Docker
+
+```bash
+npx create-fs-app@latest my-saas --preset saas-starter
+```
+
+### ecommerce
+E-commerce platform stack
+- Turborepo + React + Express
+- MongoDB + Mongoose
+- Tailwind CSS + Docker
+
+```bash
+npx create-fs-app@latest my-shop --preset ecommerce
+```
+
+### minimal
+Minimal setup without extras
+- Turborepo + React + Express
+- PostgreSQL (no ORM)
+- Plain CSS, no Docker
+
+```bash
+npx create-fs-app@latest my-app --preset minimal
+```
+
+## Templates
+
+All templates are hosted at: https://github.com/Om-jannu/create-fs-app-templates
+
+### Available Templates
+
+```bash
+# List all templates
+npx create-fs-app@latest list
+```
+
+Current templates:
+- `turborepo-nextjs-nestjs-postgresql-prisma`
+- `turborepo-react-express-mongodb-mongoose`
+
+### Using Templates
+
+```bash
+# Use by name
+npx create-fs-app@latest my-app --template turborepo-nextjs-nestjs-postgresql-prisma
+
+# Get template info
+npx create-fs-app@latest info turborepo-nextjs-nestjs-postgresql-prisma
+```
+
+## After Creation
+
+```bash
+cd my-app
+npm install        # If you used --no-install
+npm run dev        # Start development servers
+```
+
+### Available Scripts
+
+```bash
+npm run dev        # Start all apps in development
+npm run build      # Build all apps for production
+npm run lint       # Lint all code
+npm run format     # Format code with Prettier
+```
+
+### Project Structure
+
+```
+my-app/
+├── apps/
+│   ├── frontend/          # Frontend application
+│   │   ├── src/
+│   │   └── package.json
+│   └── backend/           # Backend application
+│       ├── src/
+│       └── package.json
+├── packages/
+│   └── shared/            # Shared code
+│       ├── src/
+│       └── package.json
+├── package.json           # Root package.json
+├── turbo.json            # Turborepo config
+└── README.md
+```
+
+## Cache Management
+
+Templates are cached locally for faster subsequent usage.
+
+### Cache Location
+
+```
+~/.create-fs-app/cache/
+```
+
+### Cache Commands
+
+```bash
+# View cache statistics
+npx create-fs-app@latest cache stats
+
+# Clear cache
+npx create-fs-app@latest cache clear
+```
+
+### Performance
+
+- First run: ~60 seconds (downloads template)
+- Cached run: ~6 seconds (uses local cache)
+- 10x faster with caching!
+
+## Troubleshooting
+
+### "Template not found"
+
+```bash
+# List available templates
+npx create-fs-app@latest list
+
+# Use a valid template name
+npx create-fs-app@latest my-app --template turborepo-nextjs-nestjs-postgresql-prisma
+```
+
+### "Version already exists"
+
+Make sure you're using `@latest`:
+
+```bash
+npx create-fs-app@latest my-app
+```
+
+### "Permission denied"
+
+Check directory permissions or try a different location.
+
+### Clear cache if issues
+
+```bash
+npx create-fs-app@latest cache clear
+```
+
+## Contributing Templates
+
+Want to create your own template? Check out:
+- [Template Contribution Guide](./TEMPLATE_CONTRIBUTION_GUIDE.md)
+- [Templates Repository](https://github.com/Om-jannu/create-fs-app-templates)
+
+## Links
+
+- **npm**: https://www.npmjs.com/package/create-fs-app
+- **GitHub**: https://github.com/Om-jannu/create-fs-app
+- **Templates**: https://github.com/Om-jannu/create-fs-app-templates
+- **Issues**: https://github.com/Om-jannu/create-fs-app/issues

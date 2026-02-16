@@ -284,9 +284,8 @@ Your sponsorship helps:
 ## 📖 Documentation
 
 - **[CLI Usage Guide](./docs/CLI_USAGE.md)** - Complete command reference
-- **[Quick Reference](./docs/QUICK_REFERENCE.md)** - Cheat sheet
-- **[Template Guide](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)** - Create templates
-- **[Workflow Guide](./WORKFLOW.md)** - Development workflow
+- **[Template Contribution Guide](./docs/TEMPLATE_CONTRIBUTION_GUIDE.md)** - Create your own templates
+- **[Templates Repository](https://github.com/Om-jannu/create-fs-app-templates)** - Browse all templates
 - **[Changelog](./CHANGELOG.md)** - Version history
 
 ## 🌟 Show Your Support

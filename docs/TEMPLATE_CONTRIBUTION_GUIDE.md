@@ -1,224 +1,260 @@
 # Template Contribution Guide
 
-## Overview
+Learn how to create and contribute templates to create-fs-app.
 
-Templates are the heart of create-fs-app. They're pre-built, production-ready full-stack applications that users can clone and customize.
+## Templates Repository
+
+All templates are hosted at: **https://github.com/Om-jannu/create-fs-app-templates**
+
+## What is a Template?
+
+A template is a pre-configured, production-ready full-stack monorepo application that users can clone and customize.
 
 ## Template Structure
 
-Each template should be a complete, working monorepo application in the `templates/` directory:
-
 ```
-templates/
-└── {monorepo}-{frontend}-{backend}-{database}-{orm}/
-    ├── package.json
-    ├── turbo.json (or nx.json, lerna.json)
-    ├── apps/
-    │   ├── frontend/
-    │   │   ├── package.json
-    │   │   └── src/
-    │   └── backend/
-    │       ├── package.json
-    │       ├── src/
-    │       └── .env.example
-    ├── packages/
-    │   └── shared/
-    ├── docker-compose.yml (optional)
-    └── README.md
+template-name/
+├── apps/
+│   ├── frontend/          # Frontend application
+│   │   ├── src/
+│   │   ├── package.json
+│   │   └── ...
+│   └── backend/           # Backend application
+│       ├── src/
+│       ├── package.json
+│       └── .env.example
+├── packages/
+│   └── shared/            # Shared code
+│       ├── src/
+│       └── package.json
+├── package.json           # Root package.json
+├── turbo.json            # Monorepo config
+├── docker-compose.yml    # Docker setup (optional)
+└── README.md
 ```
 
 ## Naming Convention
 
-Template folder names must follow this pattern:
+Templates must follow this naming pattern:
+
 ```
 {monorepo}-{frontend}-{backend}-{database}-{orm}
 ```
 
-Examples:
+**Examples:**
 - `turborepo-nextjs-nestjs-postgresql-prisma`
 - `nx-react-express-mongodb-mongoose`
 - `turborepo-vue-fastify-mysql-drizzle`
 
-## Required Files
+## Using Placeholders
 
-### 1. Root package.json
+Templates use placeholders that are replaced during project creation:
+
+### Available Placeholders
+
+- `{{PROJECT_NAME}}` - User's project name
+- `{{PACKAGE_MANAGER}}` - Package manager (npm/yarn/pnpm)
+
+### Example Usage
+
+**package.json:**
 ```json
 {
   "name": "{{PROJECT_NAME}}",
   "version": "0.1.0",
-  "private": true,
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "lint": "turbo run lint"
-  },
-  "packageManager": "{{PACKAGE_MANAGER}}@latest",
-  "workspaces": ["apps/*", "packages/*"]
+    "dev": "{{PACKAGE_MANAGER}} run dev"
+  }
 }
 ```
 
-### 2. README.md
-Must include:
-- Project description
+**README.md:**
+```markdown
+# {{PROJECT_NAME}}
+
+Full-stack application built with create-fs-app.
+```
+
+**.env.example:**
+```env
+DATABASE_URL="postgresql://localhost:5432/{{PROJECT_NAME}}"
+PORT=3000
+```
+
+## Template Requirements
+
+### 1. Working Application
+
+- ✅ All dependencies properly configured
+- ✅ `npm install` works without errors
+- ✅ `npm run dev` starts all apps
+- ✅ `npm run build` builds successfully
+
+### 2. Documentation
+
+**README.md must include:**
+- Project overview
 - Tech stack
 - Getting started instructions
 - Available scripts
 - Environment variables
 
-### 3. .env.example
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/{{PROJECT_NAME}}"
-PORT=3001
-NODE_ENV=development
+**Example README:**
+```markdown
+# {{PROJECT_NAME}}
+
+Full-stack monorepo built with modern technologies.
+
+## Tech Stack
+
+- **Monorepo**: Turborepo
+- **Frontend**: Next.js
+- **Backend**: NestJS
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+
+## Getting Started
+
+1. Install dependencies:
+   \`\`\`bash
+   npm install
+   \`\`\`
+
+2. Set up environment:
+   \`\`\`bash
+   cp apps/backend/.env.example apps/backend/.env
+   \`\`\`
+
+3. Start development:
+   \`\`\`bash
+   npm run dev
+   \`\`\`
+
+## Scripts
+
+- `npm run dev` - Start development servers
+- `npm run build` - Build all apps
+- `npm run lint` - Lint code
 ```
 
-### 4. .gitignore
-Standard Node.js + framework-specific ignores
+### 3. Environment Configuration
 
-## Placeholders
+Include `.env.example` files with:
+- All required environment variables
+- Sensible defaults
+- Comments explaining each variable
 
-Use these placeholders - they'll be replaced during project creation:
+### 4. Code Quality
 
-- `{{PROJECT_NAME}}` - User's project name
-- `{{FRONTEND_FRAMEWORK}}` - Frontend framework choice
-- `{{BACKEND_FRAMEWORK}}` - Backend framework choice
-- `{{DATABASE}}` - Database choice
-- `{{ORM}}` - ORM choice
-- `{{PACKAGE_MANAGER}}` - Package manager (npm/yarn/pnpm)
-- `{{MONOREPO_FRAMEWORK}}` - Monorepo framework
+- ✅ TypeScript configured
+- ✅ ESLint configured
+- ✅ Prettier configured
+- ✅ No TypeScript errors
+- ✅ Code is well-formatted
+
+## Creating a Template
+
+### Step 1: Set Up Your Stack
+
+Use official CLIs to initialize:
+
+```bash
+# Initialize Turborepo
+npx create-turbo@latest
+
+# Initialize Next.js
+npx create-next-app@latest frontend
+
+# Initialize NestJS
+npx @nestjs/cli new backend
+
+# Or use other framework CLIs
+```
+
+### Step 2: Configure Monorepo
+
+Set up your monorepo structure:
+
+```json
+{
+  "name": "{{PROJECT_NAME}}",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build"
+  }
+}
+```
+
+### Step 3: Add Placeholders
+
+Replace project-specific values:
+
+```bash
+# Find and replace your project name with {{PROJECT_NAME}}
+# Find and replace package manager commands with {{PACKAGE_MANAGER}}
+```
+
+### Step 4: Test Locally
+
+```bash
+# Test installation
+npm install
+
+# Test development
+npm run dev
+
+# Test build
+npm run build
+```
+
+### Step 5: Create README
+
+Document your template thoroughly.
+
+### Step 6: Submit to Templates Repo
+
+1. Fork: https://github.com/Om-jannu/create-fs-app-templates
+2. Add your template to `templates/` folder
+3. Test thoroughly
+4. Submit a Pull Request
 
 ## Template Checklist
 
-Before submitting a template:
+Before submitting:
 
 - [ ] Template follows naming convention
-- [ ] All dependencies are specified in package.json files
-- [ ] `npm install` (or yarn/pnpm) works without errors
-- [ ] `npm run dev` starts all apps successfully
-- [ ] `npm run build` builds all apps successfully
+- [ ] All dependencies in package.json
+- [ ] `npm install` works
+- [ ] `npm run dev` works
+- [ ] `npm run build` works
 - [ ] README.md is comprehensive
-- [ ] .env.example includes all required variables
-- [ ] Placeholders are used correctly
-- [ ] Code is well-formatted and linted
+- [ ] .env.example includes all variables
+- [ ] Placeholders used correctly
+- [ ] No TypeScript errors
+- [ ] Code is formatted
 - [ ] No sensitive data or secrets
 - [ ] Docker setup works (if included)
-- [ ] TypeScript has no errors
 
-## Testing Your Template
+## Example: Complete Template
 
-1. **Build the CLI:**
-   ```bash
-   npm run build
-   npm link
-   ```
+See reference templates at:
+https://github.com/Om-jannu/create-fs-app-templates
 
-2. **Test template creation:**
-   ```bash
-   create-fs-app test-app --template your-template-name
-   cd test-app
-   npm install
-   npm run dev
-   ```
-
-3. **Verify everything works:**
-   - Frontend loads at http://localhost:3000
-   - Backend responds at http://localhost:3001
-   - Database connection works
-   - All scripts run successfully
-
-## Adding Your Template
-
-1. **Create template folder:**
-   ```bash
-   mkdir -p templates/your-template-name
-   ```
-
-2. **Build your template:**
-   - Set up complete monorepo structure
-   - Add all necessary files
-   - Use placeholders
-   - Test thoroughly
-
-3. **Register in template-registry.ts:**
-   ```typescript
-   'your-template-name': {
-     url: TEMPLATE_REPO_URL,
-     branch: TEMPLATE_BRANCH,
-     subfolder: `${TEMPLATES_FOLDER}/your-template-name`,
-     description: 'Your template description',
-     features: ['TypeScript', 'Tailwind CSS', 'Docker']
-   }
-   ```
-
-4. **Test:**
-   ```bash
-   npm run build
-   create-fs-app test --template your-template-name
-   ```
-
-## Community Templates
-
-### Sharing Your Template
-
-1. **Fork the repository**
-2. **Add your template** to `templates/` folder
-3. **Update `template-registry.ts`**
-4. **Submit a Pull Request** with:
-   - Template name and description
-   - Tech stack details
-   - Screenshots (optional)
-   - Testing evidence
-
-### Template Quality Standards
-
-Templates should be:
-- **Production-ready** - Not just boilerplate
-- **Well-documented** - Clear README and comments
-- **Tested** - All features work
-- **Maintained** - Dependencies up to date
-- **Secure** - No vulnerabilities or secrets
-
-## Example Templates
-
-### Minimal Template
-```
-turborepo-react-express-postgresql-prisma/
-├── package.json
-├── turbo.json
-├── apps/
-│   ├── frontend/    # React with Vite
-│   └── backend/     # Express API
-└── packages/
-    └── shared/      # Shared types
-```
-
-### Full-Featured Template
-```
-turborepo-nextjs-nestjs-postgresql-prisma/
-├── package.json
-├── turbo.json
-├── docker-compose.yml
-├── apps/
-│   ├── frontend/    # Next.js 14
-│   └── backend/     # NestJS
-├── packages/
-│   ├── shared/      # Shared utilities
-│   ├── ui/          # UI components
-│   └── config/      # Shared configs
-└── .github/
-    └── workflows/   # CI/CD
-```
+Current templates:
+- `turborepo-nextjs-nestjs-postgresql-prisma`
+- `turborepo-react-express-mongodb-mongoose`
 
 ## Template Ideas
 
 Popular combinations to create:
 
 ### Turborepo
-- ✅ turborepo-nextjs-nestjs-postgresql-prisma
-- ✅ turborepo-react-express-mongodb-mongoose
 - [ ] turborepo-vue-fastify-mysql-drizzle
 - [ ] turborepo-nextjs-express-postgresql-prisma
 - [ ] turborepo-react-nestjs-mongodb-mongoose
+- [ ] turborepo-angular-nestjs-postgresql-typeorm
 
 ### Nx
 - [ ] nx-nextjs-nestjs-postgresql-prisma
@@ -229,15 +265,55 @@ Popular combinations to create:
 - [ ] lerna-react-express-postgresql-prisma
 - [ ] lerna-vue-koa-mongodb-mongoose
 
-## Support
+## Best Practices
 
-- **Issues:** Report bugs or request features
-- **Discussions:** Ask questions or share ideas
-- **Discord:** Join our community (coming soon)
+### 1. Use Official CLIs
+
+Always start with official framework CLIs:
+- `create-turbo` for Turborepo
+- `create-next-app` for Next.js
+- `@nestjs/cli` for NestJS
+- `create-vite` for React/Vue
+
+This ensures:
+- Latest versions
+- Proper configuration
+- Best practices
+
+### 2. Keep It Simple
+
+- Don't over-configure
+- Use sensible defaults
+- Document customization options
+
+### 3. Test Thoroughly
+
+Test on:
+- Fresh installation
+- Different operating systems
+- Different Node versions
+
+### 4. Document Everything
+
+- Clear README
+- Commented code
+- Environment variables explained
+
+### 5. Security
+
+- No hardcoded secrets
+- Secure defaults
+- .env.example (not .env)
+
+## Getting Help
+
+- **Issues**: https://github.com/Om-jannu/create-fs-app/issues
+- **Discussions**: https://github.com/Om-jannu/create-fs-app/discussions
+- **Templates Repo**: https://github.com/Om-jannu/create-fs-app-templates
 
 ## License
 
-All templates are MIT licensed unless otherwise specified.
+All templates should be MIT licensed unless otherwise specified.
 
 ---
 
