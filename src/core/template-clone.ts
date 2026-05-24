@@ -212,6 +212,9 @@ async function replacePlaceholders(
     '{{ORM}}': config.apps.backend.orm || 'none',
     '{{PACKAGE_MANAGER}}': config.packageManager,
     '{{MONOREPO_FRAMEWORK}}': config.monorepo,
+    // Scoped package names use 'my-app' as safe placeholder ({{}} invalid in npm names)
+    '@my-app/': `@${config.name}/`,
+    '"name": "my-app"': `"name": "${config.name}"`,
   };
 
   // Only process text files with these extensions for performance
