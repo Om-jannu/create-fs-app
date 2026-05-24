@@ -24,8 +24,8 @@ export interface TemplateMetadata {
   features: string[];
 }
 
-// Templates repository (same repo, but templates/ folder is excluded from npm package)
-const TEMPLATE_REPO_URL = 'https://github.com/Om-jannu/create-fs-app';
+// Templates repository (separate repo with pre-built templates)
+const TEMPLATE_REPO_URL = 'https://github.com/Om-jannu/create-fs-app-templates';
 const TEMPLATE_BRANCH = 'master';
 
 // Local templates directory (only used in development)
@@ -52,7 +52,14 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
     branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-react-express-mongodb-mongoose',
     description: 'Turborepo with React (Vite), Express, MongoDB, and Mongoose',
-    features: ['TypeScript', 'Tailwind CSS', 'Docker', 'Testing']
+    features: ['TypeScript', 'Tailwind CSS', 'Docker', 'Mongoose ODM']
+  },
+  'turborepo-nextjs-express-postgresql-prisma': {
+    url: TEMPLATE_REPO_URL,
+    branch: TEMPLATE_BRANCH,
+    subfolder: 'templates/turborepo-nextjs-express-postgresql-prisma',
+    description: 'Turborepo with Next.js, Express, PostgreSQL, and Prisma (lightweight)',
+    features: ['TypeScript', 'Tailwind CSS', 'Docker', 'Prisma ORM', 'ESLint', 'Prettier']
   },
 };
 
