@@ -4,7 +4,6 @@ import { z } from 'zod';
 export enum MonorepoFramework {
   Turborepo = 'turborepo',
   Nx = 'nx',
-  Lerna = 'lerna'
 }
 
 // Frontend frameworks
@@ -39,32 +38,49 @@ export enum PackageManager {
   PNPM = 'pnpm'
 }
 
-// Zod enum schemas (replacing deprecated nativeEnum)
-const MonorepoFrameworkSchema = z.enum(['turborepo', 'nx', 'lerna']);
+// API style options
+export enum ApiStyle {
+  REST = 'rest',
+  GraphQL = 'graphql',
+  Both = 'both'
+}
+
+// Auth strategy options
+export enum AuthStrategy {
+  None = 'none',
+  JWT = 'jwt'
+}
+
+// Zod enum schemas
+const MonorepoFrameworkSchema = z.enum(['turborepo', 'nx']);
 const FrontendFrameworkSchema = z.enum(['react', 'next.js', 'vue', 'nuxt', 'angular']);
 const BackendFrameworkSchema = z.enum(['express', 'nest.js', 'fastify-ts', 'koa']);
 const DatabaseSchema = z.enum(['mongodb', 'postgresql', 'mysql', 'sqlite']);
 const PackageManagerSchema = z.enum(['npm', 'yarn', 'pnpm']);
+const ApiStyleSchema = z.enum(['rest', 'graphql', 'both']);
+const AuthStrategySchema = z.enum(['none', 'jwt']);
 
 // Project configuration schema using Zod
 export const ProjectConfigSchema = z.object({
   name: z.string().min(1),
   monorepo: MonorepoFrameworkSchema,
   packageManager: PackageManagerSchema,
+  ci: z.boolean().default(false),            // GitHub Actions CI workflow
   apps: z.object({
     frontend: z.object({
       framework: FrontendFrameworkSchema,
-      // TypeScript is always enabled - no JavaScript projects
       styling: z.enum(['css', 'scss', 'tailwind', 'styled-components']),
-      testing: z.enum(['jest', 'vitest', 'cypress']).optional(),
-      linting: z.boolean()
+      eslint: z.boolean().default(true),      // ESLint (separate from Prettier)
+      prettier: z.boolean().default(true),    // Prettier (separate from ESLint)
+      turbopack: z.boolean().default(false),  // Next.js only — faster dev bundler
     }),
     backend: z.object({
       framework: BackendFrameworkSchema,
       database: DatabaseSchema,
       orm: z.enum(['prisma', 'typeorm', 'mongoose', 'drizzle']).optional(),
-      testing: z.enum(['jest', 'mocha']).optional(),
-      docker: z.boolean()
+      apiStyle: ApiStyleSchema.default('rest'),          // REST / GraphQL / Both
+      auth: AuthStrategySchema.default('none'),          // JWT auth scaffolding
+      docker: z.boolean().default(true),
     })
   })
 });
@@ -87,4 +103,4 @@ export interface TemplateConfig {
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
   scripts: Record<string, string>;
-} 
+}

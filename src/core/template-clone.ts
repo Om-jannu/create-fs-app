@@ -284,12 +284,22 @@ async function updateReadme(
       const techStack = `
 ## Tech Stack
 
-- **Monorepo**: ${config.monorepo}
-- **Frontend**: ${config.apps.frontend.framework} with ${config.apps.frontend.styling}
-- **Backend**: ${config.apps.backend.framework}
-- **Database**: ${config.apps.backend.database}
-- **ORM**: ${config.apps.backend.orm || 'None'}
-- **Package Manager**: ${config.packageManager}
+| Layer           | Choice |
+|-----------------|--------|
+| Monorepo        | ${config.monorepo} |
+| Frontend        | ${config.apps.frontend.framework} |
+| Styling         | ${config.apps.frontend.styling} |
+| Backend         | ${config.apps.backend.framework} |
+| Database        | ${config.apps.backend.database} |
+| ORM             | ${config.apps.backend.orm || 'none'} |
+| API style       | ${config.apps.backend.apiStyle} |
+| Auth            | ${config.apps.backend.auth} |
+| Package manager | ${config.packageManager} |
+| ESLint          | ${config.apps.frontend.eslint ? '✓' : '✗'} |
+| Prettier        | ${config.apps.frontend.prettier ? '✓' : '✗'} |
+| Turbopack       | ${config.apps.frontend.turbopack ? '✓' : '✗'} |
+| Docker          | ${config.apps.backend.docker ? '✓' : '✗'} |
+| GitHub Actions  | ${config.ci ? '✓' : '✗'} |
 
 `;
       readme = `# ${config.name}\n\n${techStack}${readme}`;
@@ -302,13 +312,14 @@ async function updateReadme(
 }
 
 /**
- * Handle optional features - remove code/config for unselected features
+ * Handle optional features - remove config for unselected features,
+ * patch files for enabled ones (Turbopack, CI, JWT auth).
  */
 async function handleOptionalFeatures(
   targetDir: string,
   config: ProjectConfig
 ): Promise<void> {
-  // Remove Docker files if not selected
+  // ── Docker ────────────────────────────────────────────────────────────────
   if (!config.apps.backend.docker) {
     const dockerFiles = [
       path.join(targetDir, 'Dockerfile'),
@@ -317,32 +328,307 @@ async function handleOptionalFeatures(
       path.join(targetDir, 'apps', 'backend', 'Dockerfile'),
       path.join(targetDir, 'apps', 'frontend', 'Dockerfile'),
     ];
-
     for (const file of dockerFiles) {
-      try {
-        await fs.unlink(file);
-      } catch {
-        // File doesn't exist, that's fine
-      }
+      try { await fs.unlink(file); } catch { /* ok */ }
     }
   }
 
-  // Remove linting config if not selected
-  if (!config.apps.frontend.linting) {
-    const lintFiles = [
+  // ── ESLint ────────────────────────────────────────────────────────────────
+  if (!config.apps.frontend.eslint) {
+    const eslintFiles = [
+      path.join(targetDir, 'eslint.config.mjs'),
       path.join(targetDir, '.eslintrc.json'),
-      path.join(targetDir, '.prettierrc'),
+      path.join(targetDir, '.eslintrc.js'),
+      path.join(targetDir, 'apps', 'frontend', 'eslint.config.mjs'),
       path.join(targetDir, 'apps', 'frontend', '.eslintrc.json'),
+      path.join(targetDir, 'apps', 'backend', 'eslint.config.mjs'),
+      path.join(targetDir, 'apps', 'backend', '.eslintrc.json'),
     ];
-
-    for (const file of lintFiles) {
-      try {
-        await fs.unlink(file);
-      } catch {
-        // File doesn't exist
-      }
+    for (const file of eslintFiles) {
+      try { await fs.unlink(file); } catch { /* ok */ }
     }
   }
+
+  // ── Prettier ──────────────────────────────────────────────────────────────
+  if (!config.apps.frontend.prettier) {
+    const prettierFiles = [
+      path.join(targetDir, '.prettierrc'),
+      path.join(targetDir, '.prettierrc.json'),
+      path.join(targetDir, '.prettierignore'),
+      path.join(targetDir, 'apps', 'frontend', '.prettierrc'),
+      path.join(targetDir, 'apps', 'backend', '.prettierrc'),
+    ];
+    for (const file of prettierFiles) {
+      try { await fs.unlink(file); } catch { /* ok */ }
+    }
+  }
+
+  // ── Turbopack (Next.js) ───────────────────────────────────────────────────
+  if (config.apps.frontend.turbopack && config.apps.frontend.framework === 'next.js') {
+    const frontendPkgPath = path.join(targetDir, 'apps', 'frontend', 'package.json');
+    try {
+      const raw = await fs.readFile(frontendPkgPath, 'utf-8');
+      const pkg = JSON.parse(raw);
+      if (pkg.scripts?.dev && !pkg.scripts.dev.includes('--turbopack')) {
+        pkg.scripts.dev = pkg.scripts.dev.replace('next dev', 'next dev --turbopack');
+        await fs.writeFile(frontendPkgPath, JSON.stringify(pkg, null, 2) + '\n');
+      }
+    } catch { /* package.json missing — skip */ }
+  }
+
+  // ── GitHub Actions CI ─────────────────────────────────────────────────────
+  if (config.ci) {
+    await generateCiWorkflow(targetDir, config);
+  }
+
+  // ── JWT auth scaffolding ──────────────────────────────────────────────────
+  if (config.apps.backend.auth === 'jwt') {
+    await generateJwtAuth(targetDir, config);
+  }
+}
+
+// ─── CI workflow generator ────────────────────────────────────────────────────
+
+async function generateCiWorkflow(targetDir: string, config: ProjectConfig): Promise<void> {
+  const workflowDir = path.join(targetDir, '.github', 'workflows');
+  await fs.mkdir(workflowDir, { recursive: true });
+
+  const pm = config.packageManager;
+  const installCmd = pm === 'npm' ? 'npm ci' : pm === 'yarn' ? 'yarn install --frozen-lockfile' : 'pnpm install --frozen-lockfile';
+  const lintCmd   = `${pm} run lint`;
+  const buildCmd  = `${pm} run build`;
+
+  const workflow = `name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: '${pm}'
+
+      - name: Install dependencies
+        run: ${installCmd}
+${config.apps.frontend.eslint ? `
+      - name: Lint
+        run: ${lintCmd}
+` : ''}
+      - name: Build
+        run: ${buildCmd}
+`;
+
+  await fs.writeFile(path.join(workflowDir, 'ci.yml'), workflow);
+}
+
+// ─── JWT auth scaffolding ─────────────────────────────────────────────────────
+
+async function generateJwtAuth(targetDir: string, config: ProjectConfig): Promise<void> {
+  const framework = config.apps.backend.framework;
+
+  if (framework === 'nest.js') {
+    await generateNestJwtAuth(targetDir);
+  } else {
+    // Express / Fastify / Koa — generic middleware approach
+    await generateGenericJwtAuth(targetDir, framework);
+  }
+}
+
+async function generateNestJwtAuth(targetDir: string): Promise<void> {
+  const authDir = path.join(targetDir, 'apps', 'backend', 'src', 'auth');
+  await fs.mkdir(authDir, { recursive: true });
+
+  // auth.module.ts
+  await fs.writeFile(path.join(authDir, 'auth.module.ts'), `import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { JwtStrategy } from './jwt.strategy';
+
+@Module({
+  imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'change-me',
+      signOptions: { expiresIn: '7d' },
+    }),
+  ],
+  providers: [AuthService, JwtStrategy],
+  controllers: [AuthController],
+  exports: [AuthService],
+})
+export class AuthModule {}
+`);
+
+  // auth.service.ts
+  await fs.writeFile(path.join(authDir, 'auth.service.ts'), `import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+}
+
+@Injectable()
+export class AuthService {
+  constructor(private readonly jwtService: JwtService) {}
+
+  async login(userId: string, email: string): Promise<{ access_token: string }> {
+    const payload: JwtPayload = { sub: userId, email };
+    return { access_token: this.jwtService.sign(payload) };
+  }
+
+  async verifyToken(token: string): Promise<JwtPayload> {
+    try {
+      return this.jwtService.verify<JwtPayload>(token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+  }
+}
+`);
+
+  // jwt.strategy.ts
+  await fs.writeFile(path.join(authDir, 'jwt.strategy.ts'), `import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { JwtPayload } from './auth.service';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor() {
+    super({
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ignoreExpiration: false,
+      secretOrKey: process.env.JWT_SECRET || 'change-me',
+    });
+  }
+
+  async validate(payload: JwtPayload) {
+    return { userId: payload.sub, email: payload.email };
+  }
+}
+`);
+
+  // jwt-auth.guard.ts
+  await fs.writeFile(path.join(authDir, 'jwt-auth.guard.ts'), `import { Injectable } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {}
+`);
+
+  // auth.controller.ts (login endpoint stub)
+  await fs.writeFile(path.join(authDir, 'auth.controller.ts'), `import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { AuthService } from './auth.service';
+import { IsEmail, IsString, MinLength } from 'class-validator';
+
+export class LoginDto {
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(6)
+  password!: string;
+}
+
+@ApiTags('auth')
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  /** POST /auth/login — returns a signed JWT */
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Log in and receive a JWT' })
+  async login(@Body() dto: LoginDto) {
+    // TODO: validate credentials against DB, then:
+    // return this.authService.login(user.id, user.email);
+    return this.authService.login('placeholder-id', dto.email);
+  }
+}
+`);
+
+  // Append JWT_SECRET to .env.example if present
+  const envExample = path.join(targetDir, 'apps', 'backend', '.env.example');
+  try {
+    let env = await fs.readFile(envExample, 'utf-8');
+    if (!env.includes('JWT_SECRET')) {
+      env += '\n# JWT\nJWT_SECRET=change-me-in-production\n';
+      await fs.writeFile(envExample, env);
+    }
+  } catch { /* file missing — skip */ }
+}
+
+async function generateGenericJwtAuth(targetDir: string, framework: string): Promise<void> {
+  const middlewareDir = path.join(targetDir, 'apps', 'backend', 'src', 'middleware');
+  await fs.mkdir(middlewareDir, { recursive: true });
+
+  await fs.writeFile(path.join(middlewareDir, 'jwt.middleware.ts'), `/**
+ * Generic JWT middleware — works with Express, Fastify, Koa.
+ * Install:  npm i jsonwebtoken @types/jsonwebtoken
+ */
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me';
+
+export interface JwtPayload {
+  sub: string;
+  email: string;
+  iat?: number;
+  exp?: number;
+}
+
+/** Sign a payload — call after validating credentials */
+export function signToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+}
+
+/** Verify a token — throws if invalid or expired */
+export function verifyToken(token: string): JwtPayload {
+  return jwt.verify(token, JWT_SECRET) as JwtPayload;
+}
+
+/** Express/Koa-style auth middleware */
+export function requireAuth(req: any, res: any, next: any) {
+  const header = req.headers?.authorization ?? '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Missing Authorization header' });
+  }
+
+  try {
+    req.user = verifyToken(token);
+    next();
+  } catch {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
+}
+`);
+
+  // Append JWT_SECRET to .env.example if present
+  const envExample = path.join(targetDir, 'apps', 'backend', '.env.example');
+  try {
+    let env = await fs.readFile(envExample, 'utf-8');
+    if (!env.includes('JWT_SECRET')) {
+      env += '\n# JWT\nJWT_SECRET=change-me-in-production\n';
+      await fs.writeFile(envExample, env);
+    }
+  } catch { /* file missing — skip */ }
 }
 
 /**

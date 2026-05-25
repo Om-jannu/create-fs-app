@@ -17,7 +17,9 @@ import {
   FrontendFramework,
   BackendFramework,
   Database,
-  PackageManager
+  PackageManager,
+  ApiStyle,
+  AuthStrategy,
 } from './types/index.js';
 import { scaffoldProject, validateProjectDirectory, checkTemplateAvailability, TemplateNotFoundError } from './core/scaffold.js';
 import { displayAvailableTemplates, getTemplateByName } from './core/template-list.js';
@@ -111,7 +113,7 @@ function buildConfigFromOptions(name: string | undefined, options: any): Project
   const validateEnum = (value: string, enumObj: any, name: string): any => {
     const validValues = Object.values(enumObj);
     const found = validValues.find((v: any) => v.toLowerCase() === value.toLowerCase());
-    
+
     if (!found) {
       console.log(chalk.red(`\n❌ Invalid ${name}: "${value}"\n`));
       console.log(chalk.cyan(`Valid options: ${validValues.join(', ')}\n`));
@@ -120,24 +122,35 @@ function buildConfigFromOptions(name: string | undefined, options: any): Project
     return found;
   };
 
+  const frontendFramework = validateEnum(options.frontend, FrontendFramework, 'frontend framework');
+
   const config = {
     name,
     monorepo: validateEnum(options.monorepo, MonorepoFramework, 'monorepo framework'),
-    packageManager: options.packageManager 
+    packageManager: options.packageManager
       ? validateEnum(options.packageManager, PackageManager, 'package manager')
       : PackageManager.NPM,
+    ci: options.ci === true,
     apps: {
       frontend: {
-        framework: validateEnum(options.frontend, FrontendFramework, 'frontend framework'),
-        // TypeScript is always enabled
+        framework: frontendFramework,
         styling: options.styling || 'tailwind',
-        linting: options.linting !== false // default true
+        eslint: options.eslint !== false,      // default true
+        prettier: options.prettier !== false,  // default true
+        // Turbopack only valid for Next.js
+        turbopack: frontendFramework === 'next.js' && options.turbopack === true,
       },
       backend: {
         framework: validateEnum(options.backend, BackendFramework, 'backend framework'),
         database: validateEnum(options.database, Database, 'database'),
         orm: options.orm as any,
-        docker: options.docker !== false // default true based on options
+        apiStyle: options.apiStyle
+          ? validateEnum(options.apiStyle, ApiStyle, 'API style')
+          : ApiStyle.REST,
+        auth: options.auth
+          ? validateEnum(options.auth, AuthStrategy, 'auth strategy')
+          : AuthStrategy.None,
+        docker: options.docker !== false,  // default true
       }
     }
   };
@@ -153,112 +166,212 @@ function buildConfigFromOptions(name: string | undefined, options: any): Project
 }
 
 async function promptForConfiguration(projectName?: string): Promise<ProjectConfig> {
-  const questions: prompts.PromptObject[] = [];
-  
-  if (!projectName) {
-    questions.push({
+  const onCancel = () => {
+    console.log(chalk.yellow('\n\nOperation cancelled by user'));
+    process.exit(0);
+  };
+
+  // ── Step 1: Project name ────────────────────────────────────────────────
+  let name = projectName;
+  if (!name) {
+    const { projectName: n } = await prompts({
       type: 'text',
-      name: 'name',
-      message: 'What is your project named?',
-      initial: 'my-fs-app'
-    });
+      name: 'projectName',
+      message: 'Project name:',
+      initial: 'my-fs-app',
+      validate: (v: string) => v.trim().length > 0 || 'Name required'
+    }, { onCancel });
+    name = n;
   }
-  
-  questions.push(
+
+  // ── Step 2: Monorepo + package manager ─────────────────────────────────
+  const { monorepo, packageManager } = await prompts([
     {
       type: 'select',
       name: 'monorepo',
-      message: 'Select a monorepo framework:',
-      choices: Object.values(MonorepoFramework).map(v => ({ title: v, value: v }))
+      message: 'Monorepo tool:',
+      choices: [
+        { title: 'Turborepo  — fast build caching, simple config', value: 'turborepo' },
+        { title: 'Nx         — powerful task graph, generators',   value: 'nx'        },
+      ],
+      initial: 0
     },
     {
       type: 'select',
       name: 'packageManager',
-      message: 'Select a package manager:',
-      choices: Object.values(PackageManager).map(v => ({ title: v, value: v }))
+      message: 'Package manager:',
+      choices: [
+        { title: 'npm',  value: 'npm'  },
+        { title: 'pnpm — faster installs, disk efficient', value: 'pnpm' },
+        { title: 'yarn', value: 'yarn' },
+      ],
+      initial: 0
     },
+  ], { onCancel });
+
+  // ── Step 3: Frontend ────────────────────────────────────────────────────
+  const { frontendFramework, styling } = await prompts([
     {
       type: 'select',
       name: 'frontendFramework',
-      message: 'Select a frontend framework:',
-      choices: Object.values(FrontendFramework).map(v => ({ title: v, value: v }))
+      message: 'Frontend framework:',
+      choices: [
+        { title: 'Next.js  — App Router, SSR, RSC', value: 'next.js' },
+        { title: 'React    — Vite, SPA/CSR',        value: 'react'   },
+        { title: 'Vue      — Vite, Options/Composition API', value: 'vue' },
+        { title: 'Nuxt     — SSR for Vue',           value: 'nuxt'   },
+        { title: 'Angular  — full framework',        value: 'angular' },
+      ],
+      initial: 0
     },
     {
       type: 'select',
       name: 'styling',
-      message: 'Select a styling solution:',
+      message: 'Styling solution:',
       choices: [
-        { title: 'css', value: 'css' },
-        { title: 'scss', value: 'scss' },
-        { title: 'tailwind', value: 'tailwind' },
-        { title: 'styled-components', value: 'styled-components' }
-      ]
+        { title: 'Tailwind CSS        — utility-first',  value: 'tailwind'          },
+        { title: 'CSS                 — plain stylesheets', value: 'css'            },
+        { title: 'SCSS/Sass           — CSS with superpowers', value: 'scss'        },
+        { title: 'Styled Components   — CSS-in-JS',      value: 'styled-components' },
+      ],
+      initial: 0
     },
+  ], { onCancel });
+
+  // Turbopack — only relevant for Next.js
+  let turbopack = false;
+  if (frontendFramework === 'next.js') {
+    const { tp } = await prompts({
+      type: 'confirm',
+      name: 'tp',
+      message: 'Enable Turbopack? (faster dev server for Next.js)',
+      initial: true
+    }, { onCancel });
+    turbopack = tp;
+  }
+
+  // ── Step 4: Code quality ────────────────────────────────────────────────
+  const { eslint, prettier } = await prompts([
     {
       type: 'confirm',
-      name: 'linting',
-      message: 'Enable ESLint and Prettier?',
+      name: 'eslint',
+      message: 'Add ESLint?',
       initial: true
     },
     {
+      type: 'confirm',
+      name: 'prettier',
+      message: 'Add Prettier?',
+      initial: true
+    },
+  ], { onCancel });
+
+  // ── Step 5: Backend ─────────────────────────────────────────────────────
+  const { backendFramework, database, orm } = await prompts([
+    {
       type: 'select',
       name: 'backendFramework',
-      message: 'Select a backend framework:',
-      choices: Object.values(BackendFramework).map(v => ({ title: v, value: v }))
+      message: 'Backend framework:',
+      choices: [
+        { title: 'NestJS      — TypeScript-first, modular, decorators', value: 'nest.js'    },
+        { title: 'Express     — minimal, flexible, battle-tested',       value: 'express'    },
+        { title: 'Fastify     — high performance, schema validation',    value: 'fastify-ts' },
+        { title: 'Koa         — lightweight, async middleware',          value: 'koa'        },
+      ],
+      initial: 0
     },
     {
       type: 'select',
       name: 'database',
-      message: 'Select a database:',
-      choices: Object.values(Database).map(v => ({ title: v, value: v }))
+      message: 'Database:',
+      choices: [
+        { title: 'PostgreSQL  — relational, ACID, powerful',   value: 'postgresql' },
+        { title: 'MongoDB     — document, flexible schema',     value: 'mongodb'    },
+        { title: 'MySQL       — relational, widely supported',  value: 'mysql'      },
+        { title: 'SQLite      — file-based, zero setup',        value: 'sqlite'     },
+      ],
+      initial: 0
     },
     {
       type: 'select',
       name: 'orm',
-      message: 'Select an ORM:',
+      message: 'ORM / ODM:',
       choices: [
-        { title: 'prisma', value: 'prisma' },
-        { title: 'typeorm', value: 'typeorm' },
-        { title: 'mongoose', value: 'mongoose' },
-        { title: 'drizzle', value: 'drizzle' }
-      ]
+        { title: 'Prisma     — type-safe, migrations, Studio',  value: 'prisma'   },
+        { title: 'TypeORM    — decorators, ActiveRecord/DataMapper', value: 'typeorm' },
+        { title: 'Mongoose   — MongoDB ODM, schemas',           value: 'mongoose' },
+        { title: 'Drizzle    — lightweight, SQL-like',          value: 'drizzle'  },
+      ],
+      initial: 0
     },
+  ], { onCancel });
+
+  // ── Step 6: API style ───────────────────────────────────────────────────
+  const { apiStyle } = await prompts({
+    type: 'select',
+    name: 'apiStyle',
+    message: 'API style:',
+    choices: [
+      { title: 'REST        — standard HTTP endpoints (recommended)', value: 'rest'    },
+      { title: 'GraphQL     — flexible queries with Apollo/Mercurius', value: 'graphql' },
+      { title: 'Both        — REST + GraphQL side by side',           value: 'both'    },
+    ],
+    initial: 0
+  }, { onCancel });
+
+  // ── Step 7: Auth ────────────────────────────────────────────────────────
+  const { auth } = await prompts({
+    type: 'select',
+    name: 'auth',
+    message: 'Authentication scaffolding:',
+    choices: [
+      { title: 'None — skip auth, add manually later',  value: 'none' },
+      { title: 'JWT  — login/register endpoints + guards/middleware', value: 'jwt' },
+    ],
+    initial: 0
+  }, { onCancel });
+
+  // ── Step 8: Docker + CI ────────────────────────────────────────────────
+  const { docker, ci } = await prompts([
     {
       type: 'confirm',
       name: 'docker',
-      message: 'Include Docker configuration?',
+      message: 'Include Docker / Docker Compose?',
       initial: true
-    }
-  );
+    },
+    {
+      type: 'confirm',
+      name: 'ci',
+      message: 'Add GitHub Actions CI? (lint → build on push/PR)',
+      initial: false
+    },
+  ], { onCancel });
 
-  const answers = await prompts(questions, {
-    onCancel: () => {
-      console.log(chalk.yellow('\n\nOperation cancelled by user'));
-      process.exit(0);
-    }
-  });
-
-  // Build config from flat answers
+  // ── Build + validate config ─────────────────────────────────────────────
   const config = {
-    name: projectName || answers.name,
-    monorepo: answers.monorepo,
-    packageManager: answers.packageManager,
+    name: name!,
+    monorepo,
+    packageManager,
+    ci,
     apps: {
       frontend: {
-        framework: answers.frontendFramework,
-        styling: answers.styling,
-        linting: answers.linting
+        framework: frontendFramework,
+        styling,
+        eslint,
+        prettier,
+        turbopack,
       },
       backend: {
-        framework: answers.backendFramework,
-        database: answers.database,
-        orm: answers.orm,
-        docker: answers.docker
+        framework: backendFramework,
+        database,
+        orm,
+        apiStyle,
+        auth,
+        docker,
       }
     }
   };
 
-  // Validate configuration using Zod
   return ProjectConfigSchema.parse(config);
 }
 
@@ -276,17 +389,24 @@ async function main() {
     .option('-t, --template <name>', 'Use a predefined template')
     .option('--template-url <url>', 'Use a custom template from GitHub URL')
     .option('--preset <name>', 'Use a configuration preset')
-    .option('--monorepo <framework>', 'Monorepo framework (turborepo, nx, lerna)')
+    .option('--monorepo <framework>', 'Monorepo framework (turborepo, nx)')
     .option('--frontend <framework>', 'Frontend framework (react, next.js, vue, nuxt, angular)')
-    .option('--backend <framework>', 'Backend framework (express, nest.js, fastify, koa)')
+    .option('--backend <framework>', 'Backend framework (express, nest.js, fastify-ts, koa)')
     .option('--database <db>', 'Database (postgresql, mongodb, mysql, sqlite)')
     .option('--orm <orm>', 'ORM (prisma, typeorm, mongoose, drizzle)')
     .option('--package-manager <pm>', 'Package manager (npm, yarn, pnpm)')
     .option('--styling <style>', 'Styling solution (css, scss, tailwind, styled-components)')
-    .option('--linting', 'Enable linting (default: true)')
-    .option('--no-linting', 'Disable linting')
-    .option('--docker', 'Include Docker configuration')
+    .option('--eslint', 'Enable ESLint (default: true)')
+    .option('--no-eslint', 'Disable ESLint')
+    .option('--prettier', 'Enable Prettier (default: true)')
+    .option('--no-prettier', 'Disable Prettier')
+    .option('--turbopack', 'Enable Turbopack dev server (Next.js only)')
+    .option('--api-style <style>', 'API style: rest | graphql | both (default: rest)')
+    .option('--auth <strategy>', 'Auth scaffolding: none | jwt (default: none)')
+    .option('--docker', 'Include Docker / Docker Compose (default: true)')
     .option('--no-docker', 'Skip Docker configuration')
+    .option('--ci', 'Add GitHub Actions CI workflow')
+    .option('--no-ci', 'Skip GitHub Actions CI')
     .option('--no-git', 'Skip git initialization')
     .option('--no-install', 'Skip package installation')
     .option('--no-cache', 'Skip template caching')
@@ -356,21 +476,26 @@ async function main() {
           
           // Create minimal config for custom template
           customTemplate = createCustomTemplate(options.templateUrl);
-          
+
           projectConfig = {
             name,
             monorepo: 'turborepo' as any,
             packageManager: 'npm' as any,
+            ci: false,
             apps: {
               frontend: {
                 framework: 'react' as any,
                 styling: 'tailwind',
-                linting: true
+                eslint: true,
+                prettier: true,
+                turbopack: false,
               },
               backend: {
                 framework: 'express' as any,
                 database: 'postgresql' as any,
-                docker: true
+                apiStyle: 'rest' as any,
+                auth: 'none' as any,
+                docker: true,
               }
             }
           };
@@ -416,22 +541,27 @@ async function main() {
           
           // Extract configuration from template key automatically
           const parts = template.key.split('-');
+          const tplFrontend = (parts[1] === 'nextjs' ? 'next.js' : parts[1]) as any;
           projectConfig = {
             name,
             monorepo: parts[0] as any,
             packageManager: PackageManager.NPM,
+            ci: false,
             apps: {
               frontend: {
-                framework: (parts[1] === 'nextjs' ? 'next.js' : parts[1]) as any,
-                // TypeScript is always enabled
+                framework: tplFrontend,
                 styling: 'tailwind',
-                linting: true
+                eslint: true,
+                prettier: true,
+                turbopack: false,
               },
               backend: {
                 framework: (parts[2] === 'nestjs' ? 'nest.js' : parts[2]) as any,
                 database: parts[3] as any,
                 orm: parts[4] as any,
-                docker: true
+                apiStyle: 'rest' as any,
+                auth: 'none' as any,
+                docker: true,
               }
             }
           };
@@ -456,15 +586,25 @@ async function main() {
           
           // Show detected configuration
           console.log(chalk.cyan('\n📋 Configuration from CLI options:\n'));
-          console.log(chalk.gray('  Project:'), chalk.white(projectConfig.name));
-          console.log(chalk.gray('  Monorepo:'), chalk.white(projectConfig.monorepo));
-          console.log(chalk.gray('  Frontend:'), chalk.white(projectConfig.apps.frontend.framework));
-          console.log(chalk.gray('  Backend:'), chalk.white(projectConfig.apps.backend.framework));
-          console.log(chalk.gray('  Database:'), chalk.white(projectConfig.apps.backend.database));
-          if (projectConfig.apps.backend.orm) {
-            console.log(chalk.gray('  ORM:'), chalk.white(projectConfig.apps.backend.orm));
+          console.log(chalk.gray('  Project:'),        chalk.white(projectConfig.name));
+          console.log(chalk.gray('  Monorepo:'),       chalk.white(projectConfig.monorepo));
+          console.log(chalk.gray('  Pkg manager:'),    chalk.white(projectConfig.packageManager));
+          console.log(chalk.gray('  Frontend:'),       chalk.white(projectConfig.apps.frontend.framework));
+          console.log(chalk.gray('  Styling:'),        chalk.white(projectConfig.apps.frontend.styling));
+          console.log(chalk.gray('  ESLint:'),         chalk.white(projectConfig.apps.frontend.eslint ? 'yes' : 'no'));
+          console.log(chalk.gray('  Prettier:'),       chalk.white(projectConfig.apps.frontend.prettier ? 'yes' : 'no'));
+          if (projectConfig.apps.frontend.turbopack) {
+            console.log(chalk.gray('  Turbopack:'),    chalk.white('yes'));
           }
-          console.log(chalk.gray('  Package Manager:'), chalk.white(projectConfig.packageManager));
+          console.log(chalk.gray('  Backend:'),        chalk.white(projectConfig.apps.backend.framework));
+          console.log(chalk.gray('  Database:'),       chalk.white(projectConfig.apps.backend.database));
+          if (projectConfig.apps.backend.orm) {
+            console.log(chalk.gray('  ORM:'),          chalk.white(projectConfig.apps.backend.orm));
+          }
+          console.log(chalk.gray('  API style:'),      chalk.white(projectConfig.apps.backend.apiStyle));
+          console.log(chalk.gray('  Auth:'),           chalk.white(projectConfig.apps.backend.auth));
+          console.log(chalk.gray('  Docker:'),         chalk.white(projectConfig.apps.backend.docker ? 'yes' : 'no'));
+          console.log(chalk.gray('  CI:'),             chalk.white(projectConfig.ci ? 'yes' : 'no'));
           console.log();
         }
         // Interactive mode

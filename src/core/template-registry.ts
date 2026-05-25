@@ -40,27 +40,62 @@ const LOCAL_TEMPLATES_DIR = path.join(__dirname, '../../templates');
  * For local development, templates can be in the templates/ folder.
  */
 export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
+
+  // ── Next.js + NestJS + PostgreSQL + Prisma ────────────────────────────────
   'turborepo-nextjs-nestjs-postgresql-prisma': {
     url: TEMPLATE_REPO_URL,
     branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-nextjs-nestjs-postgresql-prisma',
-    description: 'Turborepo with Next.js, NestJS, PostgreSQL, and Prisma',
-    features: ['TypeScript', 'Tailwind CSS', 'Docker', 'ESLint', 'Prettier']
+    description: 'Next.js 16 App Router + NestJS 11 REST API + PostgreSQL 16 + Prisma 5',
+    features: [
+      'Turborepo monorepo',
+      'Next.js 16 (App Router, Tailwind CSS v4)',
+      'NestJS 11 — modular, decorators, DI',
+      'Swagger / OpenAPI docs at /api',
+      'Prisma 5 ORM + migrations',
+      'PostgreSQL 16 via Docker Compose',
+      'Users CRUD example (frontend ↔ backend)',
+      'TypeScript strict — ESLint + Prettier',
+    ],
   },
-  'turborepo-react-express-mongodb-mongoose': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
-    subfolder: 'templates/turborepo-react-express-mongodb-mongoose',
-    description: 'Turborepo with React (Vite), Express, MongoDB, and Mongoose',
-    features: ['TypeScript', 'Tailwind CSS', 'Docker', 'Mongoose ODM']
-  },
+
+  // ── Next.js + Express + PostgreSQL + Prisma ───────────────────────────────
   'turborepo-nextjs-express-postgresql-prisma': {
     url: TEMPLATE_REPO_URL,
     branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-nextjs-express-postgresql-prisma',
-    description: 'Turborepo with Next.js, Express, PostgreSQL, and Prisma (lightweight)',
-    features: ['TypeScript', 'Tailwind CSS', 'Docker', 'Prisma ORM', 'ESLint', 'Prettier']
+    description: 'Next.js 16 App Router + Express 4 REST API + PostgreSQL 16 + Prisma 5',
+    features: [
+      'Turborepo monorepo',
+      'Next.js 16 (App Router, Tailwind CSS v4)',
+      'Express 4 — lightweight, flexible',
+      'Zod request validation',
+      'Prisma 5 ORM + migrations',
+      'PostgreSQL 16 via Docker Compose',
+      'Users CRUD example (frontend ↔ backend)',
+      'TypeScript strict — ESLint + Prettier',
+    ],
   },
+
+  // ── React (Vite) + Express + MongoDB + Mongoose ───────────────────────────
+  'turborepo-react-express-mongodb-mongoose': {
+    url: TEMPLATE_REPO_URL,
+    branch: TEMPLATE_BRANCH,
+    subfolder: 'templates/turborepo-react-express-mongodb-mongoose',
+    description: 'React 19 (Vite) SPA + Express 4 REST API + MongoDB 7 + Mongoose 8',
+    features: [
+      'Turborepo monorepo',
+      'React 19 + Vite — fast HMR, SPA',
+      'Tailwind CSS v4 via Vite plugin',
+      'Express 4 — lightweight, flexible',
+      'Zod request validation',
+      'Mongoose 8 ODM + schema models',
+      'MongoDB 7 via Docker Compose',
+      'Users CRUD example (frontend ↔ backend)',
+      'TypeScript strict — ESLint + Prettier',
+    ],
+  },
+
 };
 
 /**

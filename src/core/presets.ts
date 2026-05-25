@@ -160,17 +160,22 @@ export const BUILTIN_PRESETS: Record<string, Omit<Preset, 'createdAt'>> = {
     config: {
       monorepo: 'turborepo' as any,
       packageManager: 'pnpm' as any,
+      ci: false,
       apps: {
         frontend: {
           framework: 'next.js' as any,
           styling: 'tailwind',
-          linting: true
+          eslint: true,
+          prettier: true,
+          turbopack: false,
         },
         backend: {
           framework: 'nest.js' as any,
           database: 'postgresql' as any,
           orm: 'prisma',
-          docker: true
+          apiStyle: 'rest' as any,
+          auth: 'none' as any,
+          docker: true,
         }
       }
     }
@@ -181,17 +186,22 @@ export const BUILTIN_PRESETS: Record<string, Omit<Preset, 'createdAt'>> = {
     config: {
       monorepo: 'turborepo' as any,
       packageManager: 'npm' as any,
+      ci: false,
       apps: {
         frontend: {
           framework: 'react' as any,
           styling: 'tailwind',
-          linting: true
+          eslint: true,
+          prettier: true,
+          turbopack: false,
         },
         backend: {
           framework: 'express' as any,
           database: 'mongodb' as any,
           orm: 'mongoose',
-          docker: true
+          apiStyle: 'rest' as any,
+          auth: 'none' as any,
+          docker: true,
         }
       }
     }
@@ -202,16 +212,21 @@ export const BUILTIN_PRESETS: Record<string, Omit<Preset, 'createdAt'>> = {
     config: {
       monorepo: 'turborepo' as any,
       packageManager: 'npm' as any,
+      ci: false,
       apps: {
         frontend: {
           framework: 'react' as any,
           styling: 'css',
-          linting: false
+          eslint: false,
+          prettier: false,
+          turbopack: false,
         },
         backend: {
           framework: 'express' as any,
           database: 'postgresql' as any,
-          docker: false
+          apiStyle: 'rest' as any,
+          auth: 'none' as any,
+          docker: false,
         }
       }
     }
