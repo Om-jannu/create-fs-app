@@ -410,6 +410,7 @@ async function main() {
     .option('--no-git', 'Skip git initialization')
     .option('--no-install', 'Skip package installation')
     .option('--no-cache', 'Skip template caching')
+    .option('--local-templates <path>', 'Use local templates repo instead of GitHub (for development)')
     .option('-y, --yes', 'Skip prompts and use defaults')
     .action(async (name: string | undefined, options) => {
       await welcome();
@@ -639,7 +640,8 @@ async function main() {
         try {
           await scaffoldProject(projectConfig, {
             skipGit: options.git === false,
-            skipInstall: options.install === false
+            skipInstall: options.install === false,
+            localTemplatesDir: options.localTemplates,
           });
           
           spinner.succeed(chalk.green.bold('Project created successfully!'));

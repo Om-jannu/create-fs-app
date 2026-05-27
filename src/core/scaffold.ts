@@ -16,6 +16,9 @@ import {
 export interface ScaffoldOptions {
   skipGit?: boolean;
   skipInstall?: boolean;
+  /** Absolute path to a local templates repo (e.g. /home/you/create-fs-app-templates).
+   *  When set the CLI skips GitHub and copies the template from localTemplatesDir/templates/<key>. */
+  localTemplatesDir?: string;
 }
 
 /**
@@ -30,18 +33,27 @@ export async function scaffoldProject(
 
   try {
     // 1. Check if template exists
-    const template = getTemplate(config);
-    
+    let template = getTemplate(config);
+
     if (!template) {
       throw new TemplateNotFoundError(config);
     }
 
-    console.log(`\n📦 Using template: ${template.description}`);
+    // Override with local path when --local-templates is set
+    if (options.localTemplatesDir) {
+      const { getTemplateKey } = await import('./template-registry.js');
+      const key = getTemplateKey(config);
+      const localPath = path.join(options.localTemplatesDir, 'templates', key);
+      template = { ...template, localPath, url: undefined, subfolder: undefined };
+      console.log(`\n🗂️  Local template: ${localPath}`);
+    } else {
+      console.log(`\n📦 Using template: ${template.description}`);
+    }
     console.log(`Features: ${template.features.join(', ')}\n`);
 
     // 2. Clone the template
     console.log('⬇️  Downloading template...');
-    await cloneTemplate(template, targetDir, template.branch);
+    await cloneTemplate(template, targetDir, template.branch ?? 'main');
     console.log('✓ Template downloaded\n');
 
     // 3. Customize the template
