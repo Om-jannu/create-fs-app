@@ -38,5 +38,8 @@ coverage/
 # Misc
 *.pem
 .turbo
-temp
+temp/
 .npmrc
+
+# Claude Code internal
+.claude/
