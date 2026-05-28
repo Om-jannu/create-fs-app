@@ -5,7 +5,7 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import boxen from 'boxen';
-import { TEMPLATE_REGISTRY, listAllTemplates } from './template-registry.js';
+import { listAllTemplates } from './template-registry.js';
 
 /**
  * Display all available templates in a formatted table

@@ -38,6 +38,8 @@ import {
 import { runHealthCheck, displayHealthCheckResults } from './core/health-check.js';
 import { clearCache, getCacheStats } from './core/template-cache.js';
 import { createCustomTemplate } from './core/template-registry.js';
+import { getRemoteRegistry, clearRegistryCache } from './core/registry-fetch.js';
+import { setActiveRegistry } from './core/template-registry.js';
 import { validateTemplateUrl } from './utils/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -376,6 +378,14 @@ async function promptForConfiguration(projectName?: string): Promise<ProjectConf
 }
 
 async function main() {
+  // ── Hydrate registry from GitHub (non-blocking, 5 s timeout) ────────────
+  // Silently falls back to the hardcoded registry on any failure so the CLI
+  // always works offline.  New templates published to the templates repo are
+  // picked up automatically without a CLI release.
+  getRemoteRegistry()
+    .then((remote) => { if (remote) setActiveRegistry(remote); })
+    .catch(() => { /* hardcoded fallback stays active */ });
+
   const program = new Command();
 
   program
@@ -853,10 +863,12 @@ async function main() {
 
   cacheCmd
     .command('clear')
-    .description('Clear template cache')
+    .description('Clear template cache and registry cache')
     .action(async () => {
       try {
         await clearCache();
+        await clearRegistryCache();
+        console.log(chalk.green('✓ Template cache and registry cache cleared'));
       } catch (error) {
         Logger.error('Failed to clear cache');
         console.error(error);
