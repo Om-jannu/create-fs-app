@@ -33,13 +33,8 @@ npm version $RELEASE_TYPE --no-git-tag-version
 NEW_VERSION=$(node -p "require('./package.json').version")
 echo -e "${GREEN}New version: ${NEW_VERSION}${NC}"
 
-# Update version in src/index.ts
-sed -i.bak "s/.version('.*')/.version('${NEW_VERSION}')/" src/index.ts
-rm -f src/index.ts.bak
-
-echo -e "${GREEN}✅ Version updated in:${NC}"
-echo -e "  - package.json"
-echo -e "  - src/index.ts"
+echo -e "${GREEN}✅ Version updated in package.json${NC}"
+echo -e "${GREEN}   (src/index.ts reads version from package.json dynamically)${NC}"
 
 echo -e "\n${YELLOW}Next steps:${NC}"
 echo -e "1. Update CHANGELOG.md with changes"

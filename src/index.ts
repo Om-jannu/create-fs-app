@@ -391,7 +391,7 @@ async function main() {
   program
     .name('create-fs-app')
     .description('Create a full-stack monorepo application')
-    .version('2.0.0');
+    .version(pkg.version as string);
 
   // Main create command
   program
