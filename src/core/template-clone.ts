@@ -29,7 +29,8 @@ export interface CloneOptions {
 export async function cloneTemplate(
   template: TemplateMetadata,
   targetDir: string,
-  branch: string = 'main'
+  branch: string = 'main',
+  skipCache: boolean = false
 ): Promise<void> {
   const { url, subfolder, localPath } = template;
 
@@ -37,35 +38,36 @@ export async function cloneTemplate(
     // If it's a local template, just copy it
     if (localPath) {
       Logger.verbose(`Using local template from: ${localPath}`);
-      
+
       // Check if local template exists
       try {
         await fs.access(localPath);
       } catch {
         throw new Error(`Local template not found at: ${localPath}`);
       }
-      
+
       // Copy local template to target
       await fs.cp(localPath, targetDir, { recursive: true });
       return;
     }
-    
-    // Check if template is cached
-    const cachedPath = await getCachedTemplatePath(template);
-    
-    if (cachedPath) {
-      Logger.verbose('Using cached template');
-      await copyCachedTemplate(cachedPath, targetDir);
-      return;
+
+    // Check if template is cached (skipped when --no-cache is passed)
+    if (!skipCache) {
+      const cachedPath = await getCachedTemplatePath(template);
+      if (cachedPath) {
+        Logger.verbose('Using cached template');
+        await copyCachedTemplate(cachedPath, targetDir);
+        return;
+      }
     }
-    
-    Logger.verbose('Template not cached, downloading...');
-    
+
+    Logger.verbose(skipCache ? 'Cache skipped, downloading fresh copy...' : 'Template not cached, downloading...');
+
     if (subfolder && url) {
       // Clone entire repo to temp directory, then copy specific subfolder
       // Use UUID to prevent race conditions with simultaneous runs
       const tempDir = path.join(process.cwd(), `.temp-${randomUUID()}`);
-      
+
       try {
         // Clone with shallow depth for speed
         await execa('git', [
@@ -81,7 +83,7 @@ export async function cloneTemplate(
 
         // Copy the specific subfolder to target directory
         const templatePath = path.join(tempDir, subfolder);
-        
+
         // Check if the subfolder exists
         try {
           await fs.access(templatePath);
@@ -91,13 +93,15 @@ export async function cloneTemplate(
 
         // Copy the template folder contents to target
         await fs.cp(templatePath, targetDir, { recursive: true });
-        
-        // Cache the template for future use
-        Logger.verbose('Caching template for future use...');
-        await cacheTemplate(template, branch).catch(err => {
-          Logger.warn('Failed to cache template, continuing anyway');
-        });
-        
+
+        // Cache the template for future use (skipped when --no-cache)
+        if (!skipCache) {
+          Logger.verbose('Caching template for future use...');
+          await cacheTemplate(template, branch).catch(() => {
+            Logger.warn('Failed to cache template, continuing anyway');
+          });
+        }
+
         // Clean up temp directory
         await fs.rm(tempDir, { recursive: true, force: true });
       } catch (error) {
@@ -122,12 +126,14 @@ export async function cloneTemplate(
       // Remove .git directory to start fresh
       const gitDir = path.join(targetDir, '.git');
       await fs.rm(gitDir, { recursive: true, force: true });
-      
-      // Cache the template
-      Logger.verbose('Caching template for future use...');
-      await cacheTemplate(template, branch).catch(err => {
-        Logger.warn('Failed to cache template, continuing anyway');
-      });
+
+      // Cache the template (skipped when --no-cache)
+      if (!skipCache) {
+        Logger.verbose('Caching template for future use...');
+        await cacheTemplate(template, branch).catch(() => {
+          Logger.warn('Failed to cache template, continuing anyway');
+        });
+      }
     }
   } catch (error) {
     throw new Error(`Failed to clone template: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -5,7 +5,7 @@
 
 import path from 'path';
 import { ProjectConfig } from '../types/index.js';
-import { getTemplate, hasTemplate, getSuggestedTemplates } from './template-registry.js';
+import { TemplateMetadata, getTemplate, hasTemplate, getSuggestedTemplates } from './template-registry.js';
 import {
   cloneTemplate,
   customizeTemplate,
@@ -16,9 +16,13 @@ import {
 export interface ScaffoldOptions {
   skipGit?: boolean;
   skipInstall?: boolean;
+  /** Skip reading from and writing to the local template cache. Forces a fresh GitHub download. */
+  skipCache?: boolean;
   /** Absolute path to a local templates repo (e.g. /home/you/create-fs-app-templates).
    *  When set the CLI skips GitHub and copies the template from localTemplatesDir/templates/<key>. */
   localTemplatesDir?: string;
+  /** Provide a template directly (e.g. from --template-url) instead of looking one up in the registry. */
+  customTemplate?: TemplateMetadata;
 }
 
 /**
@@ -32,8 +36,8 @@ export async function scaffoldProject(
   const targetDir = path.join(process.cwd(), name);
 
   try {
-    // 1. Check if template exists
-    let template = getTemplate(config);
+    // 1. Resolve template — custom (--template-url) takes priority over registry lookup
+    let template: TemplateMetadata | null = options.customTemplate ?? getTemplate(config);
 
     if (!template) {
       throw new TemplateNotFoundError(config);
@@ -53,7 +57,7 @@ export async function scaffoldProject(
 
     // 2. Clone the template
     console.log('⬇️  Downloading template...');
-    await cloneTemplate(template, targetDir, template.branch ?? 'main');
+    await cloneTemplate(template, targetDir, template.branch ?? 'main', options.skipCache ?? false);
     console.log('✓ Template downloaded\n');
 
     // 3. Customize the template

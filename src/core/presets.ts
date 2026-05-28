@@ -64,23 +64,37 @@ async function savePresets(data: PresetsData): Promise<void> {
 /**
  * Save a preset
  */
+/** Returns true if the name collides with a built-in preset (case-insensitive). */
+export function isBuiltinPresetName(name: string): boolean {
+  return Object.keys(BUILTIN_PRESETS).some(k => k.toLowerCase() === name.toLowerCase());
+}
+
+/** Returns true if a user-saved preset with this name already exists. */
+export async function userPresetExists(name: string): Promise<boolean> {
+  const data = await loadPresets();
+  return name in data.presets;
+}
+
 export async function savePreset(
   name: string,
   config: ProjectConfig,
   description?: string
 ): Promise<void> {
   const data = await loadPresets();
-  
+
   // Remove project name from config
   const { name: _, ...configWithoutName } = config;
-  
+
+  // Preserve original createdAt when overwriting an existing preset
+  const existingCreatedAt = data.presets[name]?.createdAt;
+
   data.presets[name] = {
     name,
     description,
     config: configWithoutName,
-    createdAt: new Date().toISOString()
+    createdAt: existingCreatedAt ?? new Date().toISOString(),
   };
-  
+
   await savePresets(data);
   Logger.success(`Preset "${name}" saved successfully`);
 }

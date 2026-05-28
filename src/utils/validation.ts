@@ -56,19 +56,69 @@ export function assertValidProjectName(name: string): void {
 /**
  * Validate template URL
  */
-export function validateTemplateUrl(url: string): { valid: boolean; error?: string } {
+export interface ParsedTemplateUrl {
+  /** Bare clone URL: https://github.com/owner/repo */
+  repoUrl: string;
+  /** Branch or tag to check out (defaults to 'main') */
+  branch: string;
+  /** Optional subfolder inside the repo to use as the template root */
+  subfolder?: string;
+}
+
+/**
+ * Parse and validate a GitHub template URL.
+ *
+ * Accepts three forms:
+ *   https://github.com/user/repo
+ *   https://github.com/user/repo/tree/<branch>
+ *   https://github.com/user/repo/tree/<branch>/path/to/subfolder
+ */
+export function parseTemplateUrl(
+  url: string
+): { valid: boolean; error?: string; parsed?: ParsedTemplateUrl } {
   if (!url || url.trim() === '') {
     return { valid: false, error: 'Template URL cannot be empty' };
   }
 
-  // Check if it's a valid GitHub URL
-  const githubPattern = /^https:\/\/github\.com\/[\w-]+\/[\w-]+(\.git)?$/;
-  if (!githubPattern.test(url)) {
+  // Form 1: https://github.com/user/repo[.git]
+  const rootRe = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?$/;
+  const rootMatch = url.match(rootRe);
+  if (rootMatch) {
     return {
-      valid: false,
-      error: 'Template URL must be a valid GitHub repository URL (https://github.com/user/repo)'
+      valid: true,
+      parsed: {
+        repoUrl: `https://github.com/${rootMatch[1]}/${rootMatch[2]}`,
+        branch: 'main',
+      },
     };
   }
 
-  return { valid: true };
+  // Form 2: https://github.com/user/repo/tree/<branch>[/subfolder/path]
+  const treeRe = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)\/tree\/([\w./-]+?)(?:\/(.+))?$/;
+  const treeMatch = url.match(treeRe);
+  if (treeMatch) {
+    return {
+      valid: true,
+      parsed: {
+        repoUrl: `https://github.com/${treeMatch[1]}/${treeMatch[2]}`,
+        branch: treeMatch[3],
+        subfolder: treeMatch[4] || undefined,
+      },
+    };
+  }
+
+  return {
+    valid: false,
+    error:
+      'Template URL must be a GitHub URL in one of these forms:\n' +
+      '  https://github.com/user/repo\n' +
+      '  https://github.com/user/repo/tree/branch\n' +
+      '  https://github.com/user/repo/tree/branch/path/to/subfolder',
+  };
+}
+
+/** @deprecated use parseTemplateUrl */
+export function validateTemplateUrl(url: string): { valid: boolean; error?: string } {
+  const result = parseTemplateUrl(url);
+  return { valid: result.valid, error: result.error };
 }

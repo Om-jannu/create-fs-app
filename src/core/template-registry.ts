@@ -1,65 +1,73 @@
 /**
  * Template Registry
  * Maps user configuration to template repository URLs
- * 
- * Template Naming Convention:
- * {monorepo}-{frontend}-{backend}-{database}-{orm}
- * Example: turborepo-nextjs-nestjs-postgres-prisma
+ *
+ * Template Key Convention:
+ *   {monorepo}-{frontend}-{backend}-{database}-{orm}
+ *
+ * Two separate registries:
+ *   Official    — maintained by the repo owner; used by the interactive wizard,
+ *                 --yes, and --frontend/--backend/etc. stack flags.
+ *   Contributed — community-built variants; only reachable via --template <key>.
+ *                 Full scaffold (git, install, customise) still runs.
  */
 
-import { ProjectConfig, MonorepoFramework, FrontendFramework, BackendFramework, Database } from '../types/index.js';
+import { ProjectConfig } from '../types/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname  = dirname(__filename);
 
-/**
- * Machine-readable flags that declare which optional features a template ships with.
- * The CLI uses these to decide which yes/no prompts to show the user — if a template
- * doesn't include ESLint configs, we never ask about it and never try to delete them.
- */
+// ── Shared types ──────────────────────────────────────────────────────────────
+
 export interface TemplateSupports {
-  eslint: boolean;      // ships eslint.config.mjs / .eslintrc files
-  prettier: boolean;    // ships .prettierrc / .prettierignore files
-  docker: boolean;      // ships docker-compose.yml
-  turbopack: boolean;   // Next.js dev script supports --turbopack flag
+  eslint:     boolean;
+  prettier:   boolean;
+  docker:     boolean;
+  turbopack:  boolean;
+}
+
+export interface ContributorMetadata {
+  /** GitHub username, e.g. "johndoe" */
+  github: string;
+  /** GitHub profile URL, e.g. "https://github.com/johndoe" */
+  url: string;
+  /** The repo that contains the template, e.g. "https://github.com/johndoe/my-template" */
+  repoUrl: string;
 }
 
 export interface TemplateMetadata {
+  /** UUID v4 — stable internal identity. */
+  id?: string;
+  /**
+   * Present only on contributed templates.
+   * Official templates never have this field — the registry section defines their status.
+   */
+  contributor?: ContributorMetadata;
   url?: string;
   branch?: string;
   subfolder?: string;
-  localPath?: string; // Path to local template (for development only)
+  localPath?: string;
   description: string;
   features: string[];
-  /** Declares which optional features this template ships with. */
   supports: TemplateSupports;
 }
 
-// Templates repository (separate repo with pre-built templates)
-const TEMPLATE_REPO_URL = 'https://github.com/Om-jannu/create-fs-app-templates';
-const TEMPLATE_BRANCH = 'master';
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-// Local templates directory (only used in development)
+const TEMPLATE_REPO_URL  = 'https://github.com/Om-jannu/create-fs-app-templates';
+const TEMPLATE_BRANCH    = 'master';
 const LOCAL_TEMPLATES_DIR = path.join(__dirname, '../../templates');
 
-/**
- * Hardcoded registry — shipped inside the CLI binary as an offline fallback.
- *
- * The CLI tries to fetch a fresher copy from the templates GitHub repo at
- * startup (see registry-fetch.ts).  If that fetch succeeds the remote registry
- * is merged over this one via `setActiveRegistry()`.  Either way the rest of
- * the codebase only calls `getActiveRegistry()` / `getTemplate()` and never
- * reads TEMPLATE_REGISTRY directly.
- */
+// ── Hardcoded official registry (offline fallback) ────────────────────────────
+
 export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
 
-  // ── Next.js + NestJS + PostgreSQL + Prisma ────────────────────────────────
   'turborepo-nextjs-nestjs-postgresql-prisma': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: 'e5f7cc74-816b-4b24-819b-b7478a917ac1',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-nextjs-nestjs-postgresql-prisma',
     description: 'Next.js 16 App Router + NestJS 11 REST API + PostgreSQL 16 + Prisma 5',
     features: [
@@ -71,18 +79,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'PostgreSQL 16 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: true,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: true },
   },
 
-  // ── Next.js + Express + PostgreSQL + Prisma ───────────────────────────────
   'turborepo-nextjs-express-postgresql-prisma': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: '76af68d4-de73-4859-bc6a-2023a0850f17',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-nextjs-express-postgresql-prisma',
     description: 'Next.js 15 App Router + Express 4 REST API + PostgreSQL 16 + Prisma 5',
     features: [
@@ -94,18 +96,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'PostgreSQL 16 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: true,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: true },
   },
 
-  // ── React (Vite) + Express + MongoDB + Mongoose ───────────────────────────
   'turborepo-react-express-mongodb-mongoose': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: '42df82b4-6bba-45ee-85c4-92786438cc12',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-react-express-mongodb-mongoose',
     description: 'React 19 (Vite) SPA + Express 4 REST API + MongoDB 7 + Mongoose 8',
     features: [
@@ -118,18 +114,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'MongoDB 7 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: false,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: false },
   },
 
-  // ── Next.js + Express + MongoDB + Mongoose ────────────────────────────────
   'turborepo-nextjs-express-mongodb-mongoose': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: '869feb63-68b9-491f-9811-c9f2294549e9',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-nextjs-express-mongodb-mongoose',
     description: 'Next.js 15 App Router + Express 4 REST API + MongoDB 7 + Mongoose 8',
     features: [
@@ -141,18 +131,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'MongoDB 7 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: true,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: true },
   },
 
-  // ── Next.js + NestJS + MongoDB + Mongoose ─────────────────────────────────
   'turborepo-nextjs-nestjs-mongodb-mongoose': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: '5c739c25-6249-4415-808b-2dc305b8cc3a',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-nextjs-nestjs-mongodb-mongoose',
     description: 'Next.js 16 App Router + NestJS 11 REST API + MongoDB 7 + Mongoose 8',
     features: [
@@ -164,18 +148,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'MongoDB 7 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: true,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: true },
   },
 
-  // ── React (Vite) + NestJS + PostgreSQL + Prisma ───────────────────────────
   'turborepo-react-nestjs-postgresql-prisma': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: '8cba60d4-463a-45ef-9bb0-acb0676e04a2',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-react-nestjs-postgresql-prisma',
     description: 'React 19 (Vite) SPA + NestJS 11 REST API + PostgreSQL 16 + Prisma 5',
     features: [
@@ -188,18 +166,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'PostgreSQL 16 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: false,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: false },
   },
 
-  // ── React (Vite) + Express + PostgreSQL + Prisma ──────────────────────────
   'turborepo-react-express-postgresql-prisma': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: '8aab7d8e-b969-4c88-87ee-48fd343d0af3',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-react-express-postgresql-prisma',
     description: 'React 19 (Vite) SPA + Express 4 REST API + PostgreSQL 16 + Prisma 5',
     features: [
@@ -212,18 +184,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'PostgreSQL 16 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: false,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: false },
   },
 
-  // ── React (Vite) + NestJS + MongoDB + Mongoose ────────────────────────────
   'turborepo-react-nestjs-mongodb-mongoose': {
-    url: TEMPLATE_REPO_URL,
-    branch: TEMPLATE_BRANCH,
+    id: '70ea0b03-bfec-45cf-a99b-a284368d9660',
+    url: TEMPLATE_REPO_URL, branch: TEMPLATE_BRANCH,
     subfolder: 'templates/turborepo-react-nestjs-mongodb-mongoose',
     description: 'React 19 (Vite) SPA + NestJS 11 REST API + MongoDB 7 + Mongoose 8',
     features: [
@@ -236,118 +202,114 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateMetadata> = {
       'MongoDB 7 via Docker Compose',
       'TypeScript strict — ESLint + Prettier',
     ],
-    supports: {
-      eslint: true,
-      prettier: true,
-      docker: true,
-      turbopack: false,
-    },
+    supports: { eslint: true, prettier: true, docker: true, turbopack: false },
   },
 
 };
 
-// ── Active registry (starts as the hardcoded fallback) ────────────────────
+// ── Active registries ─────────────────────────────────────────────────────────
 
-let _activeRegistry: Record<string, TemplateMetadata> = { ...TEMPLATE_REGISTRY };
+let _officialRegistry:    Record<string, TemplateMetadata> = { ...TEMPLATE_REGISTRY };
+let _contributedRegistry: Record<string, TemplateMetadata> = {};
 
-/**
- * Replace the active registry with data fetched from GitHub.
- * Remote entries are merged over the hardcoded ones — remote wins on conflict.
- * Call this once at startup after `getRemoteRegistry()` returns.
- */
-export function setActiveRegistry(remote: Record<string, TemplateMetadata>): void {
-  _activeRegistry = { ...TEMPLATE_REGISTRY, ...remote };
+export interface RemoteRegistryPayload {
+  official:    Record<string, TemplateMetadata>;
+  contributed: Record<string, TemplateMetadata>;
 }
 
-/** Returns the currently active registry (remote or hardcoded fallback). */
-export function getActiveRegistry(): Record<string, TemplateMetadata> {
-  return _activeRegistry;
+/**
+ * Replace both active registries with data fetched from GitHub.
+ * Remote official entries are merged over the hardcoded fallback so that
+ * hardcoded id values are preserved when the remote omits them.
+ */
+export function setActiveRegistry(remote: RemoteRegistryPayload): void {
+  // Official: merge remote over hardcoded, preserve id when remote omits it
+  const mergedOfficial: Record<string, TemplateMetadata> = { ...TEMPLATE_REGISTRY };
+  for (const [key, remoteEntry] of Object.entries(remote.official)) {
+    mergedOfficial[key] = {
+      ...remoteEntry,
+      id: remoteEntry.id ?? TEMPLATE_REGISTRY[key]?.id,
+    };
+  }
+  _officialRegistry = mergedOfficial;
+
+  // Contributed: remote is authoritative (no hardcoded fallback)
+  _contributedRegistry = { ...remote.contributed };
 }
 
-// ── Key generation ──────────────────────────────────────────────────────────
+export function getOfficialRegistry():     Record<string, TemplateMetadata> { return _officialRegistry; }
+export function getContributedRegistry():  Record<string, TemplateMetadata> { return _contributedRegistry; }
 
-/**
- * Generate a template key from user configuration
- */
+// ── Key generation ────────────────────────────────────────────────────────────
+
 export function getTemplateKey(config: ProjectConfig): string {
   const { monorepo, apps } = config;
   const frontend = apps.frontend.framework.replace('.', '');
-  const backend = apps.backend.framework.replace('.', '');
+  const backend  = apps.backend.framework.replace('.', '');
   const database = apps.backend.database;
-  const orm = apps.backend.orm || 'none';
-
+  const orm      = apps.backend.orm || 'none';
   return `${monorepo}-${frontend}-${backend}-${database}-${orm}`.toLowerCase();
 }
 
+// ── Official template resolution (used by wizard / --yes / stack flags) ───────
+
 /**
- * Get template metadata for a configuration.
- * Always reads from _activeRegistry so remote entries are visible.
+ * Resolve an official template for a given stack config.
+ * Searches ONLY the official registry.
+ *
+ * Resolution order:
+ *  1. Exact key, 2. Without ORM suffix, 3. Partial prefix match
  */
 export function getTemplate(config: ProjectConfig): TemplateMetadata | null {
   const key = getTemplateKey(config);
 
-  // Exact match
-  if (_activeRegistry[key]) return _activeRegistry[key]!;
+  if (_officialRegistry[key]) return _officialRegistry[key]!;
 
-  // Without ORM suffix
   const keyWithoutOrm = key.replace(`-${config.apps.backend.orm}`, '');
-  if (_activeRegistry[keyWithoutOrm]) return _activeRegistry[keyWithoutOrm]!;
+  if (_officialRegistry[keyWithoutOrm]) return _officialRegistry[keyWithoutOrm]!;
 
-  // Closest match by monorepo-frontend-backend prefix
   const partialKey = `${config.monorepo}-${config.apps.frontend.framework.replace('.', '')}-${config.apps.backend.framework.replace('.', '')}`.toLowerCase();
-  const closest = Object.keys(_activeRegistry).find(k => k.startsWith(partialKey));
-
-  return closest ? _activeRegistry[closest]! : null;
+  const closest = Object.keys(_officialRegistry).find(k => k.startsWith(partialKey));
+  return closest ? _officialRegistry[closest]! : null;
 }
 
-/**
- * Create template metadata from custom URL
- */
-export function createCustomTemplate(
-  url: string,
-  branch: string = 'main',
-  subfolder?: string
-): TemplateMetadata {
-  return {
-    url,
-    branch,
-    subfolder,
-    description: 'Custom template from URL',
-    features: ['Custom'],
-    // Assume custom templates ship everything; user can disable via flags
-    supports: { eslint: true, prettier: true, docker: true, turbopack: false },
-  };
+// ── Listing helpers ───────────────────────────────────────────────────────────
+
+export function listOfficialTemplates(): Array<{ key: string; metadata: TemplateMetadata }> {
+  return Object.entries(_officialRegistry).map(([key, metadata]) => ({ key, metadata }));
 }
 
-/**
- * Get local templates directory
- */
-export function getLocalTemplatesDir(): string {
-  return LOCAL_TEMPLATES_DIR;
+export function listContributedTemplates(): Array<{ key: string; metadata: TemplateMetadata }> {
+  return Object.entries(_contributedRegistry).map(([key, metadata]) => ({ key, metadata }));
 }
 
-/**
- * List all available templates (from the active registry).
- */
-export function listAllTemplates(): Array<{ key: string; metadata: TemplateMetadata }> {
-  return Object.entries(_activeRegistry).map(([key, metadata]) => ({ key, metadata }));
-}
-
-/**
- * Check if a template exists for the given configuration
- */
 export function hasTemplate(config: ProjectConfig): boolean {
   return getTemplate(config) !== null;
 }
 
-/**
- * Get suggested alternatives if exact template doesn't exist
- */
 export function getSuggestedTemplates(config: ProjectConfig): TemplateMetadata[] {
   const { monorepo } = config;
-  return Object.entries(_activeRegistry)
+  return Object.entries(_officialRegistry)
     .filter(([key]) => key.startsWith(monorepo))
     .map(([, metadata]) => metadata)
     .slice(0, 3);
 }
 
+// ── Custom template (--template-url) ──────────────────────────────────────────
+
+export function createCustomTemplate(
+  url: string,
+  branch: string = 'main',
+  subfolder?: string,
+): TemplateMetadata {
+  return {
+    url, branch, subfolder,
+    description: 'Custom template from URL',
+    features: ['Custom'],
+    supports: { eslint: true, prettier: true, docker: true, turbopack: false },
+  };
+}
+
+export function getLocalTemplatesDir(): string {
+  return LOCAL_TEMPLATES_DIR;
+}

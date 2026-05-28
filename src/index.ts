@@ -22,25 +22,32 @@ import {
   AuthStrategy,
 } from './types/index.js';
 import { scaffoldProject, validateProjectDirectory, checkTemplateAvailability, TemplateNotFoundError } from './core/scaffold.js';
-import { displayAvailableTemplates, getTemplateByName } from './core/template-list.js';
+import {
+  displayAvailableTemplates,
+  getContributedByName,
+  getOfficialByName,
+  ListOptions,
+} from './core/template-list.js';
 import { assertValidProjectName } from './utils/validation.js';
 import { Logger } from './utils/logger.js';
 import { formatError } from './utils/errors.js';
-import { 
-  savePreset, 
-  loadPreset, 
-  listPresets, 
-  deletePreset, 
+import {
+  savePreset,
+  loadPreset,
+  listPresets,
+  deletePreset,
   getPresetConfig,
   getBuiltinPreset,
-  BUILTIN_PRESETS 
+  isBuiltinPresetName,
+  userPresetExists,
+  BUILTIN_PRESETS,
 } from './core/presets.js';
 import { runHealthCheck, displayHealthCheckResults } from './core/health-check.js';
 import { clearCache, getCacheStats } from './core/template-cache.js';
 import { createCustomTemplate } from './core/template-registry.js';
 import { getRemoteRegistry, clearRegistryCache } from './core/registry-fetch.js';
 import { setActiveRegistry } from './core/template-registry.js';
-import { validateTemplateUrl } from './utils/validation.js';
+import { parseTemplateUrl } from './utils/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -90,6 +97,20 @@ async function welcome() {
 /**
  * Build configuration from CLI options
  */
+/**
+ * Case-insensitive enum validator — shared by buildConfigFromOptions and --yes/--template paths.
+ */
+function validateEnum(value: string, enumObj: any, fieldName: string): any {
+  const validValues = Object.values(enumObj);
+  const found = validValues.find((v: any) => v.toLowerCase() === value.toLowerCase());
+  if (!found) {
+    console.log(chalk.red(`\n❌ Invalid ${fieldName}: "${value}"\n`));
+    console.log(chalk.cyan(`Valid options: ${validValues.join(', ')}\n`));
+    process.exit(1);
+  }
+  return found;
+}
+
 function buildConfigFromOptions(name: string | undefined, options: any): ProjectConfig {
   // Validate required fields
   if (!name) {
@@ -110,19 +131,6 @@ function buildConfigFromOptions(name: string | undefined, options: any): Project
     console.log(chalk.cyan('💡 Or run without options for interactive mode.\n'));
     process.exit(1);
   }
-
-  // Validate enum values
-  const validateEnum = (value: string, enumObj: any, name: string): any => {
-    const validValues = Object.values(enumObj);
-    const found = validValues.find((v: any) => v.toLowerCase() === value.toLowerCase());
-
-    if (!found) {
-      console.log(chalk.red(`\n❌ Invalid ${name}: "${value}"\n`));
-      console.log(chalk.cyan(`Valid options: ${validValues.join(', ')}\n`));
-      process.exit(1);
-    }
-    return found;
-  };
 
   const frontendFramework = validateEnum(options.frontend, FrontendFramework, 'frontend framework');
 
@@ -427,8 +435,10 @@ async function main() {
 
       try {
         let projectConfig: ProjectConfig;
-        let customTemplate: any = null;
-        
+        let customTemplate: import('./core/template-registry.js').TemplateMetadata | null = null;
+        // When true the availability check against the registry is skipped (custom URL supplies its own template)
+        let skipAvailabilityCheck = false;
+
         // Check if using preset
         if (options.preset) {
           if (!name) {
@@ -477,22 +487,27 @@ async function main() {
             console.log(chalk.cyan('Usage: create-fs-app <project-name> --template-url <url>\n'));
             process.exit(1);
           }
-          
-          // Validate URL
-          const validation = validateTemplateUrl(options.templateUrl);
-          if (!validation.valid) {
-            Logger.error(validation.error!);
+
+          // Parse URL — extracts repoUrl, branch, and optional subfolder
+          const parsed = parseTemplateUrl(options.templateUrl);
+          if (!parsed.valid) {
+            Logger.error(parsed.error!);
             process.exit(1);
           }
-          
-          // Create minimal config for custom template
-          customTemplate = createCustomTemplate(options.templateUrl);
 
+          const { repoUrl, branch, subfolder } = parsed.parsed!;
+
+          // Build the TemplateMetadata directly from the parsed URL
+          customTemplate = createCustomTemplate(repoUrl, branch, subfolder);
+
+          // Minimal projectConfig — only name and pm matter here; the registry is not used
           projectConfig = {
             name,
             monorepo: 'turborepo' as any,
-            packageManager: 'npm' as any,
-            ci: false,
+            packageManager: options.packageManager
+              ? validateEnum(options.packageManager, PackageManager, 'package manager')
+              : PackageManager.NPM,
+            ci: options.ci === true,
             apps: {
               frontend: {
                 framework: 'react' as any,
@@ -506,15 +521,20 @@ async function main() {
                 database: 'postgresql' as any,
                 apiStyle: 'rest' as any,
                 auth: 'none' as any,
-                docker: true,
+                docker: options.docker !== false,
               }
             }
           };
-          
+
+          // Custom template bypasses the registry — skip availability check
+          skipAvailabilityCheck = true;
+
           console.log();
           const infoBox = boxen(
             chalk.cyan.bold('🔗 Using Custom Template\n\n') +
-            chalk.white(`URL: `) + chalk.green(options.templateUrl),
+            chalk.white('Repo:   ') + chalk.green(repoUrl) + '\n' +
+            chalk.white('Branch: ') + chalk.green(branch) +
+            (subfolder ? '\n' + chalk.white('Folder: ') + chalk.green(subfolder) : ''),
             {
               padding: 1,
               margin: 1,
@@ -524,40 +544,70 @@ async function main() {
           );
           console.log(infoBox);
         }
-        // Check if using direct template
+        // --template: contributed templates only
         else if (options.template) {
-          const template = getTemplateByName(options.template);
-          if (!template) {
-            const errorBox = boxen(
-              chalk.red.bold('❌ Template Not Found\n\n') +
-              chalk.white(`Template "${options.template}" doesn't exist.\n\n`) +
-              chalk.cyan('💡 Use ') + chalk.white.bold('create-fs-app list') + chalk.cyan(' to see available templates.'),
-              {
-                padding: 1,
-                margin: 1,
-                borderStyle: 'round',
-                borderColor: 'red'
-              }
-            );
-            console.log(errorBox);
+          // First check if user mistakenly typed an official key
+          const officialCheck = getOfficialByName(options.template);
+          if (officialCheck.match) {
+            console.log(boxen(
+              chalk.yellow.bold('⚠️  That\'s an official template\n\n') +
+              chalk.white(`"${options.template}" is an official template, not a contributed one.\n\n`) +
+              chalk.gray('Official templates are selected automatically by the wizard or stack flags:\n') +
+              chalk.cyan('  create-fs-app my-app\n') +
+              chalk.cyan('  create-fs-app my-app --frontend next.js --backend nest.js --database postgresql\n\n') +
+              chalk.gray('To browse contributed templates: ') +
+              chalk.cyan('create-fs-app list --contributed'),
+              { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'yellow' }
+            ));
             process.exit(1);
           }
-          
-          // For direct template usage, we still need a project name
+
+          const resolution = getContributedByName(options.template);
+
+          if (resolution.ambiguous) {
+            const lines = resolution.ambiguous.map(t =>
+              `  ${chalk.cyan(t.key)}\n    ${chalk.dim('by @' + (t.metadata.contributor?.github ?? 'unknown'))}`
+            ).join('\n');
+            console.log(boxen(
+              chalk.yellow.bold('⚠️  Ambiguous — multiple contributed templates match\n\n') +
+              chalk.white(`"${options.template}" matches ${resolution.ambiguous.length} templates:\n\n`) +
+              lines + '\n\n' +
+              chalk.gray('Use a more specific substring or the full key.'),
+              { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'yellow' }
+            ));
+            process.exit(1);
+          }
+
+          if (!resolution.match) {
+            console.log(boxen(
+              chalk.red.bold('❌ Contributed Template Not Found\n\n') +
+              chalk.white(`"${options.template}" didn't match any contributed template.\n\n`) +
+              chalk.cyan('💡 Browse contributed templates:\n') +
+              chalk.cyan('   create-fs-app list --contributed\n') +
+              chalk.cyan('   create-fs-app list --contributed ' + options.template),
+              { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'red' }
+            ));
+            process.exit(1);
+          }
+
+          const template = resolution.match;
+
           if (!name) {
             console.log(chalk.red('\n❌ Project name is required when using --template.\n'));
-            console.log(chalk.cyan('Usage: create-fs-app <project-name> --template <template-name>\n'));
+            console.log(chalk.cyan('Usage: create-fs-app <project-name> --template <key>\n'));
             process.exit(1);
           }
-          
-          // Extract configuration from template key automatically
+
+          // Extract stack config from the base 5 segments of the key
           const parts = template.key.split('-');
           const tplFrontend = (parts[1] === 'nextjs' ? 'next.js' : parts[1]) as any;
           projectConfig = {
             name,
             monorepo: parts[0] as any,
-            packageManager: PackageManager.NPM,
-            ci: false,
+            packageManager: options.packageManager
+              ? validateEnum(options.packageManager, PackageManager, 'package manager')
+              : PackageManager.NPM,
+            ci: options.ci === true,
             apps: {
               frontend: {
                 framework: tplFrontend,
@@ -576,25 +626,63 @@ async function main() {
               }
             }
           };
-          
+
+          // Pass the contributed template directly to scaffoldProject
+          customTemplate = template.metadata;
+          skipAvailabilityCheck = true;
+
+          const contrib = template.metadata.contributor;
           console.log();
-          const infoBox = boxen(
-            chalk.cyan.bold('🚀 Using Template\n\n') +
-            chalk.white(`Template: `) + chalk.green(template.key) + '\n' +
-            chalk.white(`Description: `) + chalk.gray(template.metadata.description),
-            {
-              padding: 1,
-              margin: 1,
-              borderStyle: 'round',
-              borderColor: 'cyan'
-            }
-          );
-          console.log(infoBox);
+          console.log(boxen(
+            chalk.yellow.bold('◆ Using Contributed Template\n\n') +
+            chalk.white('Template:    ') + chalk.yellow(template.key) + '\n' +
+            (contrib
+              ? chalk.white('By:          ') + chalk.cyan(`@${contrib.github}`) + chalk.dim(`  ${contrib.url}`) + '\n' +
+                chalk.white('Repo:        ') + chalk.dim(contrib.repoUrl) + '\n'
+              : '') +
+            chalk.white('Description: ') + chalk.gray(template.metadata.description),
+            { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'yellow' }
+          ));
         }
+        // --yes: fill missing flags with saas-starter defaults, skip all prompts
+        else if (options.yes) {
+          if (!name) {
+            Logger.error('Project name is required when using --yes.');
+            console.log(chalk.cyan('Usage: create-fs-app <project-name> [options] --yes\n'));
+            process.exit(1);
+          }
+
+          // Merge any explicit flags with defaults — explicit always wins
+          const withDefaults = {
+            ...options,
+            monorepo:  options.monorepo  ?? 'turborepo',
+            frontend:  options.frontend  ?? 'next.js',
+            backend:   options.backend   ?? 'nest.js',
+            database:  options.database  ?? 'postgresql',
+            orm:       options.orm       ?? 'prisma',
+          };
+
+          projectConfig = buildConfigFromOptions(name, withDefaults);
+
+          // Show resolved configuration
+          console.log(chalk.cyan('\n⚡ Using defaults (--yes)\n'));
+          console.log(chalk.gray('  Project:'),     chalk.white(projectConfig.name));
+          console.log(chalk.gray('  Monorepo:'),    chalk.white(projectConfig.monorepo));
+          console.log(chalk.gray('  Pkg manager:'), chalk.white(projectConfig.packageManager));
+          console.log(chalk.gray('  Frontend:'),    chalk.white(projectConfig.apps.frontend.framework));
+          console.log(chalk.gray('  Styling:'),     chalk.white(projectConfig.apps.frontend.styling));
+          console.log(chalk.gray('  Backend:'),     chalk.white(projectConfig.apps.backend.framework));
+          console.log(chalk.gray('  Database:'),    chalk.white(projectConfig.apps.backend.database));
+          console.log(chalk.gray('  ORM:'),         chalk.white(projectConfig.apps.backend.orm ?? 'none'));
+          console.log(chalk.gray('  Docker:'),      chalk.white(projectConfig.apps.backend.docker ? 'yes' : 'no'));
+          console.log(chalk.gray('  CI:'),          chalk.white(projectConfig.ci ? 'yes' : 'no'));
+          console.log();
+        }
+
         // Check if stack options provided via CLI
         else if (options.monorepo || options.frontend || options.backend) {
           projectConfig = buildConfigFromOptions(name, options);
-          
+
           // Show detected configuration
           console.log(chalk.cyan('\n📋 Configuration from CLI options:\n'));
           console.log(chalk.gray('  Project:'),        chalk.white(projectConfig.name));
@@ -625,19 +713,21 @@ async function main() {
         
         // Validate project directory
         await validateProjectDirectory(projectConfig.name);
-        
-        // Check if template exists
-        const availability = checkTemplateAvailability(projectConfig);
-        
-        if (!availability.available) {
-          console.log(chalk.yellow('\n⚠️  No exact template match found for your configuration.'));
-          console.log(chalk.cyan('\n📋 Available similar templates:'));
-          availability.suggestions?.forEach((s, i) => {
-            console.log(chalk.cyan(`   ${i + 1}. ${s}`));
-          });
-          console.log(chalk.yellow('\n💡 Tip: You can contribute this template combination to our repository!'));
-          console.log(chalk.blue('   Visit: https://github.com/create-fs-app-templates\n'));
-          process.exit(0);
+
+        // Check if a registry template exists (skipped for --template-url which supplies its own)
+        if (!skipAvailabilityCheck) {
+          const availability = checkTemplateAvailability(projectConfig);
+
+          if (!availability.available) {
+            console.log(chalk.yellow('\n⚠️  No exact template match found for your configuration.'));
+            console.log(chalk.cyan('\n📋 Available similar templates:'));
+            availability.suggestions?.forEach((s, i) => {
+              console.log(chalk.cyan(`   ${i + 1}. ${s}`));
+            });
+            console.log(chalk.yellow('\n💡 Tip: You can contribute this template combination to our repository!'));
+            console.log(chalk.blue('   Visit: https://github.com/create-fs-app-templates\n'));
+            process.exit(0);
+          }
         }
 
         const spinner = ora({
@@ -651,7 +741,9 @@ async function main() {
           await scaffoldProject(projectConfig, {
             skipGit: options.git === false,
             skipInstall: options.install === false,
+            skipCache: options.cache === false,
             localTemplatesDir: options.localTemplates,
+            customTemplate: customTemplate ?? undefined,
           });
           
           spinner.succeed(chalk.green.bold('Project created successfully!'));
@@ -705,70 +797,94 @@ async function main() {
 
   // List templates command
   program
-    .command('list')
-    .description('List all available templates')
+    .command('list [search]')
+    .description('List templates. Default: official only. Use --contributed or --all to see community templates.')
     .alias('ls')
-    .action(() => {
-      displayAvailableTemplates();
+    .option('--contributed', 'Show only contributed (community) templates')
+    .option('--all',         'Show official and contributed templates')
+    .action((search: string | undefined, cmdOpts: { contributed?: boolean; all?: boolean }) => {
+      displayAvailableTemplates({
+        search:      search?.trim() || undefined,
+        contributed: cmdOpts.contributed,
+        all:         cmdOpts.all,
+      });
     });
 
   // Template info command
   program
     .command('info <template>')
-    .description('Show detailed information about a template')
+    .description('Show detailed information about a specific template')
     .action((templateName: string) => {
-      const template = getTemplateByName(templateName);
-      if (!template) {
-        const errorBox = boxen(
-          chalk.red.bold('❌ Template Not Found\n\n') +
-          chalk.white(`"${templateName}" doesn't exist.\n\n`) +
-          chalk.gray('Use ') + chalk.cyan('create-fs-app list') + chalk.gray(' to see available templates.'),
-          {
-            padding: 1,
-            margin: 1,
-            borderStyle: 'round',
-            borderColor: 'red'
-          }
-        );
-        console.log(errorBox);
+      // Search official first, then contributed
+      const officialRes    = getOfficialByName(templateName);
+      const contributedRes = getContributedByName(templateName);
+
+      // Collect all ambiguous across both registries
+      const allAmbiguous = [
+        ...(officialRes.ambiguous ?? []),
+        ...(contributedRes.ambiguous ?? []),
+      ];
+
+      if (!officialRes.match && !contributedRes.match) {
+        if (allAmbiguous.length > 0) {
+          const lines = allAmbiguous.map(t =>
+            `  ${chalk.cyan(t.key)}  ${t.metadata.contributor ? chalk.dim('community') : chalk.green('✦ official')}`
+          ).join('\n');
+          console.log(boxen(
+            chalk.yellow.bold('⚠️  Ambiguous — multiple templates match\n\n') + lines + '\n\n' +
+            chalk.gray('Use the full key: ') + chalk.cyan('create-fs-app info <full-key>'),
+            { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'yellow' }
+          ));
+        } else {
+          console.log(boxen(
+            chalk.red.bold('❌ Template Not Found\n\n') +
+            chalk.white(`"${templateName}" doesn't match any template.\n\n`) +
+            chalk.gray('Run ') + chalk.cyan('create-fs-app list --all') + chalk.gray(' to browse everything.'),
+            { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'red' }
+          ));
+        }
         return;
       }
 
-      console.log();
-      const infoBox = boxen(
-        chalk.bold.white(`📦 ${template.key}\n\n`) +
-        chalk.gray('Description:\n') +
-        chalk.white(`${template.metadata.description}\n\n`) +
+      const isOfficial   = !!officialRes.match;
+      const { key, metadata } = (officialRes.match ?? contributedRes.match)!;
+      const borderColor  = isOfficial ? 'cyan' : 'yellow';
+      const badge        = isOfficial
+        ? chalk.green('✦ official')
+        : (() => {
+            const c = metadata.contributor;
+            return chalk.yellow('◆ contributed') +
+              (c ? chalk.dim(`  by @${c.github}  ${c.url}`) : '');
+          })();
+
+      let body = chalk.bold.white(`📦 ${key}\n`) + badge + '\n\n';
+      if (!isOfficial && metadata.contributor) {
+        body += chalk.gray('Contributor repo: ') + chalk.dim(metadata.contributor.repoUrl) + '\n\n';
+      }
+      body +=
+        chalk.gray('Description:\n') + chalk.white(`${metadata.description}\n\n`) +
         chalk.gray('Features:\n') +
-        template.metadata.features.map((f: string) => chalk.green(`✓ ${f}`)).join('\n') +
+        metadata.features.map((f: string) => chalk.green(`✓ ${f}`)).join('\n') + '\n\n' +
+        chalk.gray('Supports: ') +
+        Object.entries(metadata.supports ?? {}).filter(([, v]) => v).map(([k]) => chalk.yellow(k)).join(', ') +
         '\n\n' +
-        chalk.gray('Repository:\n') +
-        chalk.cyan.underline(template.metadata.url),
-        {
-          padding: 1,
-          margin: 1,
-          borderStyle: 'round',
-          borderColor: 'cyan',
-          title: chalk.bold.cyan('Template Info'),
-          titleAlignment: 'center'
-        }
-      );
-      
-      console.log(infoBox);
-      
-      const usageBox = boxen(
-        chalk.cyan(`npx create-fs-app my-app --template ${template.key}`),
-        {
-          padding: 1,
-          margin: { top: 0, bottom: 1, left: 1, right: 1 },
-          borderStyle: 'round',
-          borderColor: 'blue',
-          title: chalk.bold.blue('💡 Usage'),
-          titleAlignment: 'left'
-        }
-      );
-      
-      console.log(usageBox);
+        chalk.gray('Repository: ') + chalk.cyan.underline(metadata.url ?? '');
+
+      console.log();
+      console.log(boxen(body, {
+        padding: 1, margin: 1, borderStyle: 'round', borderColor,
+        title: chalk.bold('Template Info'), titleAlignment: 'center',
+      }));
+
+      const usageCmd = isOfficial
+        ? `npx create-fs-app my-app  # wizard auto-selects for this stack`
+        : `npx create-fs-app my-app --template ${key}`;
+      console.log(boxen(chalk.cyan(usageCmd), {
+        padding: 1,
+        margin: { top: 0, bottom: 1, left: 1, right: 1 },
+        borderStyle: 'round', borderColor: 'blue',
+        title: chalk.bold.blue('💡 Usage'), titleAlignment: 'left',
+      }));
     });
 
   // Health check command
@@ -794,12 +910,71 @@ async function main() {
 
   presetCmd
     .command('save <name>')
-    .description('Save current configuration as a preset')
+    .description(
+      'Save a stack configuration as a reusable preset.\n' +
+      '  Pass the same stack flags as the main command (--frontend, --backend,\n' +
+      '  --database, --orm, --package-manager, etc.).\n' +
+      '  Unspecified flags default to the saas-starter stack.'
+    )
     .option('-d, --description <desc>', 'Preset description')
-    .action(async (name: string, options) => {
-      // This would need to be called from within a project
-      Logger.error('This command must be run from within a create-fs-app project');
-      process.exit(1);
+    .option('-f, --force',              'Overwrite an existing preset without prompting')
+    .action(async (presetName: string, cmdOptions) => {
+      try {
+        // ── Guard: block built-in names ─────────────────────────────────────
+        if (isBuiltinPresetName(presetName)) {
+          Logger.error(`"${presetName}" is a built-in preset and cannot be overwritten.`);
+          console.log(chalk.cyan('Built-in presets: ' + Object.keys(BUILTIN_PRESETS).join(', ') + '\n'));
+          process.exit(1);
+        }
+
+        // ── Guard: warn on duplicate user preset ────────────────────────────
+        const exists = await userPresetExists(presetName);
+        if (exists && !cmdOptions.force) {
+          Logger.error(`Preset "${presetName}" already exists.`);
+          console.log(chalk.cyan(`  Use --force to overwrite: create-fs-app preset save ${presetName} --force\n`));
+          process.exit(1);
+        }
+
+        // Stack flags are defined on the root program and consumed there —
+        // read them back via program.opts().
+        const rootOpts = program.opts();
+
+        // Merge with saas-starter defaults for anything not specified
+        const withDefaults = {
+          monorepo:       rootOpts.monorepo       ?? 'turborepo',
+          frontend:       rootOpts.frontend       ?? 'next.js',
+          backend:        rootOpts.backend        ?? 'nest.js',
+          database:       rootOpts.database       ?? 'postgresql',
+          orm:            rootOpts.orm            ?? 'prisma',
+          packageManager: rootOpts.packageManager,
+          styling:        rootOpts.styling,
+          apiStyle:       rootOpts.apiStyle,
+          auth:           rootOpts.auth,
+          docker:         rootOpts.docker,
+          ci:             rootOpts.ci,
+        };
+
+        // Build and validate the config (dummy project name — stripped by savePreset)
+        const config = buildConfigFromOptions('preset-placeholder', withDefaults);
+
+        await savePreset(presetName, config, cmdOptions.description);
+
+        const verb = exists ? chalk.yellow('updated') : chalk.green('saved');
+        console.log(`\n✓ Preset "${presetName}" ${verb}\n`);
+        console.log(chalk.gray('  Monorepo:'),    chalk.white(config.monorepo));
+        console.log(chalk.gray('  Pkg manager:'), chalk.white(config.packageManager));
+        console.log(chalk.gray('  Frontend:'),    chalk.white(config.apps.frontend.framework));
+        console.log(chalk.gray('  Backend:'),     chalk.white(config.apps.backend.framework));
+        console.log(chalk.gray('  Database:'),    chalk.white(config.apps.backend.database));
+        console.log(chalk.gray('  ORM:'),         chalk.white(config.apps.backend.orm ?? 'none'));
+        console.log(chalk.gray('  Docker:'),      chalk.white(config.apps.backend.docker ? 'yes' : 'no'));
+        console.log();
+        console.log(chalk.cyan(`💡 Use it: create-fs-app my-app --preset ${presetName}\n`));
+      } catch (error) {
+        Logger.error('Failed to save preset');
+        console.error(error);
+        process.exit(1);
+      }
     });
 
   presetCmd
