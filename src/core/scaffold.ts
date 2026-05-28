@@ -49,35 +49,23 @@ export async function scaffoldProject(
       const key = getTemplateKey(config);
       const localPath = path.join(options.localTemplatesDir, 'templates', key);
       template = { ...template, localPath, url: undefined, subfolder: undefined };
-      console.log(`\n🗂️  Local template: ${localPath}`);
-    } else {
-      console.log(`\n📦 Using template: ${template.description}`);
     }
-    console.log(`Features: ${template.features.join(', ')}\n`);
 
     // 2. Clone the template
-    console.log('⬇️  Downloading template...');
     await cloneTemplate(template, targetDir, template.branch ?? 'main', options.skipCache ?? false);
-    console.log('✓ Template downloaded\n');
 
     // 3. Customize the template
-    console.log('🔧 Customizing template...');
     await customizeTemplate(targetDir, config);
-    console.log('✓ Template customized\n');
 
     // 4. Initialize git (if not skipped)
     if (!options.skipGit) {
-      console.log('📝 Initializing git repository...');
       await initializeGit(targetDir, config);
     }
 
     // 5. Install dependencies (if not skipped)
     if (!options.skipInstall) {
-      console.log('📦 Installing dependencies...');
       await installDependencies(targetDir, config.packageManager);
     }
-
-    console.log('\n✨ Project created successfully!\n');
     
     // Ensure cursor is visible
     process.stdout.write('\x1B[?25h');

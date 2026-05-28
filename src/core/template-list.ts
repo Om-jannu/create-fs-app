@@ -13,6 +13,7 @@ import {
   listContributedTemplates,
   TemplateMetadata,
 } from './template-registry.js';
+import { isValidUUID } from '../utils/validation.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -172,7 +173,7 @@ export function displayAvailableTemplates(opts: ListOptions = {}): void {
         ? chalk.cyan(`@${contrib.github}`) + '\n' + chalk.dim(contrib.repoUrl)
         : chalk.dim('unknown');
       table.push([
-        chalk.white(key),
+        chalk.white(key) + '\n' + chalk.dim(metadata.id ?? 'no-uuid'),
         chalk.gray(metadata.description),
         byLine,
       ]);
@@ -187,9 +188,9 @@ export function displayAvailableTemplates(opts: ListOptions = {}): void {
     chalk.white.bold('Official templates') + chalk.gray(' (wizard / stack flags):\n') +
     chalk.cyan('  npx create-fs-app my-app\n') +
     chalk.cyan('  npx create-fs-app my-app --frontend next.js --backend nest.js --database postgresql\n\n') +
-    chalk.white.bold('Contributed templates') + chalk.gray(' (--template flag):\n') +
-    chalk.cyan('  npx create-fs-app my-app --template <key>\n') +
-    chalk.cyan('  npx create-fs-app my-app --template nextjs-nestjs-postgresql-graphql\n\n') +
+    chalk.white.bold('Contributed templates') + chalk.gray(' (--template UUID):\n') +
+    chalk.cyan('  npx create-fs-app my-app --template <uuid>\n') +
+    chalk.cyan('  npx create-fs-app list --contributed   # browse & copy UUID\n\n') +
     chalk.white.bold('Filter & search:\n') +
     chalk.cyan('  npx create-fs-app list --contributed\n') +
     chalk.cyan('  npx create-fs-app list --all\n') +
@@ -211,6 +212,15 @@ export function displayAvailableTemplates(opts: ListOptions = {}): void {
  */
 export function getContributedByName(name: string): TemplateResolution {
   return resolveFrom(listContributedTemplates(), name);
+}
+
+/**
+ * Resolve a contributed template by its exact UUID v4.
+ * Used by --template flag (UUID-only mode).
+ */
+export function getContributedByUUID(uuid: string): TemplateMatch | null {
+  const all = listContributedTemplates();
+  return all.find(t => t.metadata.id === uuid) ?? null;
 }
 
 /**

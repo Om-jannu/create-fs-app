@@ -31,7 +31,7 @@ import {
 const REGISTRY_RAW_URL =
   'https://raw.githubusercontent.com/Om-jannu/create-fs-app-templates/master/registry.json';
 
-const CACHE_DIR   = path.join(os.homedir(), '.cache', 'create-fs-app');
+const CACHE_DIR   = path.join(os.homedir(), '.create-fs-app');
 const CACHE_FILE  = path.join(CACHE_DIR, 'registry.json');
 const CACHE_TTL   = 60 * 60 * 1000; // 1 hour
 const FETCH_TIMEOUT = 5_000;

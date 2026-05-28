@@ -86,21 +86,3 @@ export const ProjectConfigSchema = z.object({
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
-
-// CLI Options type
-export interface CLIOptions {
-  template?: string;
-  git?: boolean;
-  install?: boolean;
-  yes?: boolean;
-}
-
-// Template configuration type
-export interface TemplateConfig {
-  name: string;
-  description: string;
-  monorepo: MonorepoFramework;
-  dependencies: Record<string, string>;
-  devDependencies: Record<string, string>;
-  scripts: Record<string, string>;
-}

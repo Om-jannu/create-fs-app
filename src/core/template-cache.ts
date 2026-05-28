@@ -152,7 +152,7 @@ export async function cacheTemplate(
     // Clone to cache
     if (template.subfolder) {
       // Clone entire repo to temp, then copy subfolder
-      const tempPath = path.join(CACHE_DIR, `temp-${cacheKey}`);
+      const tempPath = path.join(os.tmpdir(), `cfs-cache-${cacheKey}`);
       
       try {
         await execa('git', [
@@ -228,6 +228,23 @@ export async function clearCache(): Promise<void> {
   }
 }
 
+async function getDirSize(dirPath: string): Promise<number> {
+  let size = 0;
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        size += await getDirSize(full);
+      } else {
+        const s = await fs.stat(full);
+        size += s.size;
+      }
+    }
+  } catch {}
+  return size;
+}
+
 /**
  * Get cache statistics
  */
@@ -238,15 +255,12 @@ export async function getCacheStats(): Promise<{
 }> {
   await ensureCacheDir();
   const metadata = await getCacheMetadata();
-  
+
   // Calculate cache size
   let totalSize = 0;
   for (const key of Object.keys(metadata.templates)) {
     const cachePath = path.join(CACHE_DIR, key);
-    try {
-      const stats = await fs.stat(cachePath);
-      totalSize += stats.size;
-    } catch {}
+    totalSize += await getDirSize(cachePath);
   }
   
   const cacheSizeMB = (totalSize / (1024 * 1024)).toFixed(2);

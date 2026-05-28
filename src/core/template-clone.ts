@@ -6,6 +6,7 @@
 import { execa } from 'execa';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { randomUUID } from 'crypto';
 import { ProjectConfig } from '../types/index.js';
 import { getTemplate, TemplateMetadata } from './template-registry.js';
@@ -66,7 +67,7 @@ export async function cloneTemplate(
     if (subfolder && url) {
       // Clone entire repo to temp directory, then copy specific subfolder
       // Use UUID to prevent race conditions with simultaneous runs
-      const tempDir = path.join(process.cwd(), `.temp-${randomUUID()}`);
+      const tempDir = path.join(os.tmpdir(), `.cfs-temp-${randomUUID()}`);
 
       try {
         // Clone with shallow depth for speed
@@ -689,6 +690,40 @@ export class AuthController {
       await fs.writeFile(envExample, env);
     }
   } catch { /* file missing — skip */ }
+
+  // Add JWT-related packages to backend package.json
+  const backendPkgPath = path.join(targetDir, 'apps', 'backend', 'package.json');
+  try {
+    const raw = await fs.readFile(backendPkgPath, 'utf-8');
+    const pkg = JSON.parse(raw);
+    pkg.dependencies = pkg.dependencies ?? {};
+    pkg.dependencies['@nestjs/jwt']      = '^10.2.0';
+    pkg.dependencies['@nestjs/passport'] = '^10.0.3';
+    pkg.dependencies['passport']         = '^0.7.0';
+    pkg.dependencies['passport-jwt']     = '^4.0.1';
+    pkg.devDependencies = pkg.devDependencies ?? {};
+    pkg.devDependencies['@types/passport-jwt'] = '^4.0.1';
+    await fs.writeFile(backendPkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  } catch { /* backend package.json missing */ }
+
+  // Wire AuthModule into AppModule
+  const appModulePath = path.join(targetDir, 'apps', 'backend', 'src', 'app.module.ts');
+  try {
+    let appModule = await fs.readFile(appModulePath, 'utf-8');
+    if (!appModule.includes('AuthModule')) {
+      // Add import statement after the last import line
+      appModule = appModule.replace(
+        /^(import .+;\n)(?!import)/m,
+        `$1import { AuthModule } from './auth/auth.module';\n`
+      );
+      // Add AuthModule to imports array
+      appModule = appModule.replace(
+        /imports:\s*\[/,
+        'imports: [\n    AuthModule,'
+      );
+      await fs.writeFile(appModulePath, appModule);
+    }
+  } catch { /* app.module.ts not present in template */ }
 }
 
 async function generateGenericJwtAuth(targetDir: string, framework: string): Promise<void> {
@@ -747,6 +782,18 @@ export function requireAuth(req: any, res: any, next: any) {
       await fs.writeFile(envExample, env);
     }
   } catch { /* file missing — skip */ }
+
+  // Add jsonwebtoken to backend package.json
+  const backendPkgPath = path.join(targetDir, 'apps', 'backend', 'package.json');
+  try {
+    const raw = await fs.readFile(backendPkgPath, 'utf-8');
+    const pkg = JSON.parse(raw);
+    pkg.dependencies = pkg.dependencies ?? {};
+    pkg.dependencies['jsonwebtoken'] = '^9.0.2';
+    pkg.devDependencies = pkg.devDependencies ?? {};
+    pkg.devDependencies['@types/jsonwebtoken'] = '^9.0.7';
+    await fs.writeFile(backendPkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  } catch { /* backend package.json missing */ }
 }
 
 /**
@@ -828,14 +875,11 @@ async function updateEnvTemplate(
  */
 export async function initializeGit(targetDir: string, config: ProjectConfig): Promise<void> {
   try {
-    process.chdir(targetDir);
-    
-    await execa('git', ['init']);
-    await execa('git', ['add', '.']);
-    await execa('git', ['commit', '-m', `Initial commit: ${config.name}`]);
-    
+    await execa('git', ['init'],                             { cwd: targetDir });
+    await execa('git', ['add', '.'],                         { cwd: targetDir });
+    await execa('git', ['commit', '-m', `Initial commit: ${config.name}`], { cwd: targetDir });
     console.log('✓ Initialized git repository');
-  } catch (error) {
+  } catch {
     console.warn('Warning: Git initialization failed');
   }
 }
@@ -848,14 +892,11 @@ export async function installDependencies(
   packageManager: string
 ): Promise<void> {
   try {
-    process.chdir(targetDir);
-    
     console.log(`Installing dependencies with ${packageManager}...`);
-    
     await execa(packageManager, ['install'], {
+      cwd: targetDir,
       stdio: 'inherit',
     });
-    
     console.log('✓ Dependencies installed');
   } catch (error) {
     throw new Error(`Failed to install dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -25,10 +25,11 @@ import { scaffoldProject, validateProjectDirectory, checkTemplateAvailability, T
 import {
   displayAvailableTemplates,
   getContributedByName,
+  getContributedByUUID,
   getOfficialByName,
   ListOptions,
 } from './core/template-list.js';
-import { assertValidProjectName } from './utils/validation.js';
+import { assertValidProjectName, isValidUUID } from './utils/validation.js';
 import { Logger } from './utils/logger.js';
 import { formatError } from './utils/errors.js';
 import {
@@ -36,7 +37,6 @@ import {
   loadPreset,
   listPresets,
   deletePreset,
-  getPresetConfig,
   getBuiltinPreset,
   isBuiltinPresetName,
   userPresetExists,
@@ -169,8 +169,7 @@ function buildConfigFromOptions(name: string | undefined, options: any): Project
   try {
     return ProjectConfigSchema.parse(config);
   } catch (error) {
-    Logger.error('Invalid configuration:');
-    console.error(error);
+    Logger.error('Invalid configuration: ' + (error instanceof Error ? error.message : String(error)));
     process.exit(1);
   }
 }
@@ -390,7 +389,8 @@ async function main() {
   // Silently falls back to the hardcoded registry on any failure so the CLI
   // always works offline.  New templates published to the templates repo are
   // picked up automatically without a CLI release.
-  getRemoteRegistry()
+  // Store promise so list/info commands can await it (max 3 s)
+  const registryReady = getRemoteRegistry()
     .then((remote) => { if (remote) setActiveRegistry(remote); })
     .catch(() => { /* hardcoded fallback stays active */ });
 
@@ -544,63 +544,55 @@ async function main() {
           );
           console.log(infoBox);
         }
-        // --template: contributed templates only
+        // --template: contributed templates only (UUID-only mode)
         else if (options.template) {
-          // First check if user mistakenly typed an official key
-          const officialCheck = getOfficialByName(options.template);
-          if (officialCheck.match) {
+          // --template only accepts UUID v4
+          if (!isValidUUID(options.template)) {
             console.log(boxen(
-              chalk.yellow.bold('⚠️  That\'s an official template\n\n') +
-              chalk.white(`"${options.template}" is an official template, not a contributed one.\n\n`) +
-              chalk.gray('Official templates are selected automatically by the wizard or stack flags:\n') +
-              chalk.cyan('  create-fs-app my-app\n') +
-              chalk.cyan('  create-fs-app my-app --frontend next.js --backend nest.js --database postgresql\n\n') +
-              chalk.gray('To browse contributed templates: ') +
-              chalk.cyan('create-fs-app list --contributed'),
-              { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'yellow' }
-            ));
-            process.exit(1);
-          }
-
-          const resolution = getContributedByName(options.template);
-
-          if (resolution.ambiguous) {
-            const lines = resolution.ambiguous.map(t =>
-              `  ${chalk.cyan(t.key)}\n    ${chalk.dim('by @' + (t.metadata.contributor?.github ?? 'unknown'))}`
-            ).join('\n');
-            console.log(boxen(
-              chalk.yellow.bold('⚠️  Ambiguous — multiple contributed templates match\n\n') +
-              chalk.white(`"${options.template}" matches ${resolution.ambiguous.length} templates:\n\n`) +
-              lines + '\n\n' +
-              chalk.gray('Use a more specific substring or the full key.'),
-              { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'yellow' }
-            ));
-            process.exit(1);
-          }
-
-          if (!resolution.match) {
-            console.log(boxen(
-              chalk.red.bold('❌ Contributed Template Not Found\n\n') +
-              chalk.white(`"${options.template}" didn't match any contributed template.\n\n`) +
-              chalk.cyan('💡 Browse contributed templates:\n') +
-              chalk.cyan('   create-fs-app list --contributed\n') +
-              chalk.cyan('   create-fs-app list --contributed ' + options.template),
+              chalk.red.bold('❌ Invalid --template value\n\n') +
+              chalk.white('--template only accepts a UUID v4 (the unique ID of a contributed template).\n\n') +
+              chalk.gray('Find the UUID with:\n') +
+              chalk.cyan('  create-fs-app list --contributed\n\n') +
+              chalk.gray('Then use it:\n') +
+              chalk.cyan(`  create-fs-app my-app --template <uuid>`),
               { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'red' }
             ));
             process.exit(1);
           }
 
-          const template = resolution.match;
+          // Find in contributed registry only
+          const match = getContributedByUUID(options.template);
+
+          if (!match) {
+            console.log(boxen(
+              chalk.red.bold('❌ Contributed Template Not Found\n\n') +
+              chalk.white(`No contributed template has UUID "${options.template}".\n\n`) +
+              chalk.cyan('💡 Browse contributed templates and copy a UUID:\n') +
+              chalk.cyan('   create-fs-app list --contributed'),
+              { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'red' }
+            ));
+            process.exit(1);
+          }
 
           if (!name) {
             console.log(chalk.red('\n❌ Project name is required when using --template.\n'));
-            console.log(chalk.cyan('Usage: create-fs-app <project-name> --template <key>\n'));
+            console.log(chalk.cyan('Usage: create-fs-app <project-name> --template <uuid>\n'));
             process.exit(1);
           }
 
           // Extract stack config from the base 5 segments of the key
-          const parts = template.key.split('-');
-          const tplFrontend = (parts[1] === 'nextjs' ? 'next.js' : parts[1]) as any;
+          const FRAMEWORK_MAP: Record<string, string> = {
+            nextjs:    'next.js',
+            nestjs:    'nest.js',
+            fastifyts: 'fastify-ts',
+            react:     'react',
+            express:   'express',
+            koa:       'koa',
+          };
+          const parts = match.key.split('-');
+          const tplFrontend = (FRAMEWORK_MAP[parts[1]] ?? parts[1]) as any;
+          const tplBackend  = (FRAMEWORK_MAP[parts[2]] ?? parts[2]) as any;
+
           projectConfig = {
             name,
             monorepo: parts[0] as any,
@@ -617,7 +609,7 @@ async function main() {
                 turbopack: false,
               },
               backend: {
-                framework: (parts[2] === 'nestjs' ? 'nest.js' : parts[2]) as any,
+                framework: tplBackend,
                 database: parts[3] as any,
                 orm: parts[4] as any,
                 apiStyle: 'rest' as any,
@@ -627,20 +619,20 @@ async function main() {
             }
           };
 
-          // Pass the contributed template directly to scaffoldProject
-          customTemplate = template.metadata;
+          customTemplate = match.metadata;
           skipAvailabilityCheck = true;
 
-          const contrib = template.metadata.contributor;
+          const contrib = match.metadata.contributor;
           console.log();
           console.log(boxen(
             chalk.yellow.bold('◆ Using Contributed Template\n\n') +
-            chalk.white('Template:    ') + chalk.yellow(template.key) + '\n' +
+            chalk.white('Template:    ') + chalk.yellow(match.key) + '\n' +
+            chalk.white('UUID:        ') + chalk.dim(match.metadata.id ?? options.template) + '\n' +
             (contrib
               ? chalk.white('By:          ') + chalk.cyan(`@${contrib.github}`) + chalk.dim(`  ${contrib.url}`) + '\n' +
                 chalk.white('Repo:        ') + chalk.dim(contrib.repoUrl) + '\n'
               : '') +
-            chalk.white('Description: ') + chalk.gray(template.metadata.description),
+            chalk.white('Description: ') + chalk.gray(match.metadata.description),
             { padding: 1, margin: 1, borderStyle: 'round', borderColor: 'yellow' }
           ));
         }
@@ -788,8 +780,7 @@ async function main() {
             });
           }
         } else {
-          console.error(chalk.red('\n❌ Error creating project:'));
-          console.error(error);
+          console.error(chalk.red('\n❌ Error: ') + chalk.red(error instanceof Error ? error.message : String(error)));
         }
         process.exit(1);
       }
@@ -802,7 +793,9 @@ async function main() {
     .alias('ls')
     .option('--contributed', 'Show only contributed (community) templates')
     .option('--all',         'Show official and contributed templates')
-    .action((search: string | undefined, cmdOpts: { contributed?: boolean; all?: boolean }) => {
+    .action(async (search: string | undefined, cmdOpts: { contributed?: boolean; all?: boolean }) => {
+      // Await registry hydration (max 3 s) before displaying
+      await Promise.race([registryReady, new Promise<void>(r => setTimeout(r, 3000))]);
       displayAvailableTemplates({
         search:      search?.trim() || undefined,
         contributed: cmdOpts.contributed,
@@ -814,7 +807,8 @@ async function main() {
   program
     .command('info <template>')
     .description('Show detailed information about a specific template')
-    .action((templateName: string) => {
+    .action(async (templateName: string) => {
+      await Promise.race([registryReady, new Promise<void>(r => setTimeout(r, 3000))]);
       // Search official first, then contributed
       const officialRes    = getOfficialByName(templateName);
       const contributedRes = getContributedByName(templateName);
@@ -898,7 +892,7 @@ async function main() {
         process.exit(result.passed ? 0 : 1);
       } catch (error) {
         Logger.error('Failed to run health check');
-        console.error(error);
+        if (error instanceof Error) console.error(chalk.red(error.message));
         process.exit(1);
       }
     });
@@ -972,7 +966,7 @@ async function main() {
         console.log(chalk.cyan(`💡 Use it: create-fs-app my-app --preset ${presetName}\n`));
       } catch (error) {
         Logger.error('Failed to save preset');
-        console.error(error);
+        if (error instanceof Error) console.error(chalk.red(error.message));
         process.exit(1);
       }
     });
@@ -988,28 +982,37 @@ async function main() {
         console.log(chalk.cyan.bold('\n📚 Available Presets\n'));
         
         // Built-in presets
-        console.log(chalk.bold.green('Built-in Presets:'));
+        console.log(chalk.bold.green('Built-in Presets:') + chalk.dim('  (read-only — cannot be saved over or deleted)'));
         builtinKeys.forEach(key => {
           const preset = BUILTIN_PRESETS[key];
+          const cfg = preset.config;
           console.log(chalk.white(`  ${key}`));
           console.log(chalk.gray(`    ${preset.description}`));
+          console.log(chalk.dim(`    Stack:   ${cfg.apps.frontend.framework} + ${cfg.apps.backend.framework} + ${cfg.apps.backend.database}`));
         });
         
-        // User presets
-        if (presets.length > 0) {
+        // User presets — exclude any builtin names that may have leaked into the file
+        const userPresets = presets.filter(p => !isBuiltinPresetName(p.name));
+        if (userPresets.length > 0) {
           console.log(chalk.bold.green('\nYour Presets:'));
-          presets.forEach(preset => {
+          userPresets.forEach(preset => {
             console.log(chalk.white(`  ${preset.name}`));
             if (preset.description) {
               console.log(chalk.gray(`    ${preset.description}`));
             }
+            console.log(chalk.dim(`    Created:   ${new Date(preset.createdAt).toLocaleString()}`));
+            if (preset.lastUsed) {
+              console.log(chalk.dim(`    Last used: ${new Date(preset.lastUsed).toLocaleString()}`));
+            }
+            const cfg = preset.config;
+            console.log(chalk.dim(`    Stack:     ${cfg.apps.frontend.framework} + ${cfg.apps.backend.framework} + ${cfg.apps.backend.database}`));
           });
         }
         
         console.log(chalk.cyan('\n💡 Use: create-fs-app my-app --preset <name>\n'));
       } catch (error) {
         Logger.error('Failed to list presets');
-        console.error(error);
+        if (error instanceof Error) console.error(chalk.red(error.message));
         process.exit(1);
       }
     });
@@ -1020,13 +1023,22 @@ async function main() {
     .action(async (name: string) => {
       try {
         const deleted = await deletePreset(name);
+
         if (!deleted) {
-          Logger.error(`Preset "${name}" not found`);
+          // Not in user file — check if it's a builtin to give a better message
+          if (isBuiltinPresetName(name)) {
+            Logger.error(`"${name}" is a built-in preset and cannot be deleted.`);
+            console.log(chalk.cyan('Built-in presets: ' + Object.keys(BUILTIN_PRESETS).join(', ') + '\n'));
+          } else {
+            Logger.error(`Preset "${name}" not found.`);
+            console.log(chalk.cyan('\nRun create-fs-app preset list to see available presets.\n'));
+          }
           process.exit(1);
         }
+        // deletePreset already logs success
       } catch (error) {
         Logger.error('Failed to delete preset');
-        console.error(error);
+        if (error instanceof Error) console.error(chalk.red(error.message));
         process.exit(1);
       }
     });
@@ -1046,7 +1058,7 @@ async function main() {
         console.log(chalk.green('✓ Template cache and registry cache cleared'));
       } catch (error) {
         Logger.error('Failed to clear cache');
-        console.error(error);
+        if (error instanceof Error) console.error(chalk.red(error.message));
         process.exit(1);
       }
     });
@@ -1071,7 +1083,7 @@ async function main() {
         console.log();
       } catch (error) {
         Logger.error('Failed to get cache stats');
-        console.error(error);
+        if (error instanceof Error) console.error(chalk.red(error.message));
         process.exit(1);
       }
     });
