@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
@@ -47,29 +47,28 @@ jobs:
         run: npm publish
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            ## What's Changed
-
-            See [CHANGELOG.md](https://github.com/Om-jannu/create-fs-app/blob/master/CHANGELOG.md) for details.
-
-            ## Installation
-
-            ```bash
-            npx create-fs-app@latest my-app
-            ```
-
-            ## Links
-
-            - [npm package](https://www.npmjs.com/package/create-fs-app)
-            - [Documentation](https://github.com/Om-jannu/create-fs-app#readme)
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "## What's Changed"
+            echo ""
+            echo "See [CHANGELOG.md](https://github.com/Om-jannu/create-fs-app/blob/master/CHANGELOG.md) for details."
+            echo ""
+            echo "## Installation"
+            echo ""
+            echo '```bash'
+            echo "npx create-fs-app@latest my-app"
+            echo '```'
+            echo ""
+            echo "## Links"
+            echo ""
+            echo "- [npm package](https://www.npmjs.com/package/create-fs-app)"
+            echo "- [Documentation](https://github.com/Om-jannu/create-fs-app#readme)"
+          } > release-notes.md
+          gh release create "${{ github.ref_name }}" \
+            --title "Release ${{ github.ref_name }}" \
+            --notes-file release-notes.md
 
       - name: Summary
         run: |
