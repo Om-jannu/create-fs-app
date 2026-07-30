@@ -333,8 +333,14 @@ See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for:
 - Pull request process and code standards
 - How to contribute a template to the community registry
 
+Please also read our **[Code of Conduct](./CODE_OF_CONDUCT.md)**.
+
+Found a security issue? See **[SECURITY.md](./SECURITY.md)** — please don't open a public issue for vulnerabilities.
+
+See **[CHANGELOG.md](./CHANGELOG.md)** for release history.
+
 ---
 
 ## License
 
-ISC © [Om-jannu](https://github.com/Om-jannu)
+ISC © [Om-jannu](https://github.com/Om-jannu) — see **[LICENSE](./LICENSE)**.
