@@ -426,7 +426,7 @@ async function main() {
     .option('--ci', 'Add GitHub Actions CI workflow')
     .option('--no-ci', 'Skip GitHub Actions CI')
     .option('--no-git', 'Skip git initialization')
-    .option('--no-install', 'Skip package installation')
+    .option('--install', 'Install dependencies after scaffolding (default: false)')
     .option('--no-cache', 'Skip template caching')
     .option('--local-templates <path>', 'Use local templates repo instead of GitHub (for development)')
     .option('-y, --yes', 'Skip prompts and use defaults')
@@ -732,7 +732,7 @@ async function main() {
         try {
           await scaffoldProject(projectConfig, {
             skipGit: options.git === false,
-            skipInstall: options.install === false,
+            skipInstall: options.install !== true,
             skipCache: options.cache === false,
             localTemplatesDir: options.localTemplates,
             customTemplate: customTemplate ?? undefined,
@@ -753,7 +753,7 @@ async function main() {
           chalk.white.bold(`🎉 ${projectConfig.name} is ready!\n\n`) +
           chalk.cyan.bold('Next Steps:\n\n') +
           chalk.white(`${chalk.green('1.')} ${chalk.cyan(`cd ${projectConfig.name}`)}\n`) +
-          chalk.white(`${chalk.green('2.')} ${chalk.cyan(options.install === false ? `${projectConfig.packageManager} install` : `${projectConfig.packageManager} run dev`)}\n`) +
+          chalk.white(`${chalk.green('2.')} ${chalk.cyan(options.install === true ? `${projectConfig.packageManager} run dev` : `${projectConfig.packageManager} install`)}\n`) +
           chalk.white(`${chalk.green('3.')} ${chalk.cyan('Start building! 🚀')}\n\n`) +
           chalk.gray('Documentation:\n') +
           chalk.gray('• README.md - Project overview\n') +

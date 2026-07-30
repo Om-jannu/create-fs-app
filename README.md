@@ -70,7 +70,7 @@ After selection the CLI:
 1. Fetches the best-matching official template from GitHub
 2. Renames every placeholder to your project name
 3. Initialises a git repository
-4. Installs dependencies with your chosen package manager
+4. Installs dependencies with your chosen package manager, if `--install` was passed
 
 ---
 
@@ -184,7 +184,7 @@ Template sources
 Behaviour
   --package-manager <pm>      npm | yarn | pnpm
   --no-git                    Skip git initialization
-  --no-install                Skip dependency installation
+  --install                   Install dependencies after scaffolding (default: false)
   --no-cache                  Force fresh download, skip cache
   -y, --yes                   Accept all defaults, skip prompts
 
